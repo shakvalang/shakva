@@ -9,12 +9,4 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-  - package-ecosystem: cargo
-    directory: /
-    schedule:
-      interval: monthly
-    commit-message:
-      prefix: build
-    groups:
-      cargo:
-        patterns: ["*"]
+  # cargo: back with the first vertical slice's Cargo workspace

@@ -64,20 +64,4 @@ jobs:
           mdbook-version: latest
       - run: mdbook build docs
 
-  build:
-    name: Build and test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    # a hang fails the job in minutes, not GitHub's six hours
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-      # rustup reads rust-toolchain.toml: the nightly it names, installed on first use
-      - run: rustup show
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all --check
-      - run: cargo build --workspace --locked
-      - run: cargo test --workspace --locked
+  # build and test: the first vertical slice brings the Cargo workspace and this job back

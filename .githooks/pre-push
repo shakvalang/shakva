@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
 
-cargo fmt --all --check
-cargo test --workspace
+python3 -m unittest discover -s scripts -p '*_test.py'
+python3 scripts/docs.py check
