@@ -13,5 +13,5 @@ index = { changelog_title = "ADR index", omit_from_changelog = true }
 path = "CHANGELOG.md"
 template = "remote"
 remote = "github.com"
-owner = "canarylang"
-repository = "canary"
+owner = "shakvalang"
+repository = "shakva"

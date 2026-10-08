@@ -1,10 +1,10 @@
 # Prior art
 
-The languages and implementations Canary is measured against, in two roles: **references**, which Canary learns from, and **peers**, which a user picks Canary over or not. Cite them by id: "as R1 does". Facts as of 2026-10; a row that goes stale is updated, not kept.
+The languages and implementations Shakva is measured against, in two roles: **references**, which Shakva learns from, and **peers**, which a user picks Shakva over or not. Cite them by id: "as R1 does". Facts as of 2026-10; a row that goes stale is updated, not kept.
 
 ## References
 
-| # | Project | For Canary |
+| # | Project | For Shakva |
 |---|---|---|
 | R1 | [rustc](https://github.com/rust-lang/rust) (`compiler/rustc_lexer`, `rustc_span`, `rustc_errors`) | **the model for the frontend's structure**: a text-free lexer, the source map, diagnostics as data with a derive |
 | R2 | [rust-analyzer](https://github.com/rust-lang/rust-analyzer) | the tooling-grade frontend: a lossless tree, an error-resilient parser, one syntax for compiler, formatter and server |
@@ -16,7 +16,7 @@ The languages and implementations Canary is measured against, in two roles: **re
 
 ## Peers
 
-| Language | Canary's answer |
+| Language | Shakva's answer |
 |---|---|
 | Kotlin (R5) | no JVM, no null, no coroutine coloring |
 | Swift (R6) | no ARC, no Apple |
