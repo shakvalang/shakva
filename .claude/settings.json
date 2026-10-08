@@ -1,0 +1,24 @@
+{
+  "autoMode": {
+    "environment": [
+      "$defaults",
+      "This is a Rust cargo workspace (nightly toolchain) for the Shakva programming language compiler `skc` and its tooling; `cargo build/check/test/run/fmt/clippy` and `mdbook build/serve` in `docs/` are routine and safe.",
+      "Commits are checked by cocogitto (`cog verify`) through `.githooks/commit-msg`; `python3 scripts/docs.py` manages ADR numbers and the ADR index.",
+      "Long or repeated runs (benches, stress loops) belong on `ssh filaco.dev` in a worktree under `~/Projects/shakva/.claude/worktrees/`, never on the Mac."
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/prune-merged-worktrees.sh",
+            "async": true,
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

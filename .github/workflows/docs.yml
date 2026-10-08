@@ -1,0 +1,62 @@
+name: Docs
+
+# the ADR index, written from the headers after a merge: a PR leaves docs/adr/README.md's
+# table alone, so two PRs never meet in it
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/adr/*.md"
+      - "!docs/adr/README.md" # the commit this workflow pushes
+      - "scripts/docs.py"
+  workflow_dispatch:
+
+# one run at a time: each starts from the master the one before pushed
+concurrency:
+  group: docs-index
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  index:
+    name: ADR index
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # GITHUB_TOKEN cannot push to master past the ruleset: the organization's app, else a PAT
+      - id: app
+        if: vars.RELEASE_APP_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
+      # a number two PRs took slips past their checks when neither ran after the other merged:
+      # red here, renumbered by hand
+      - name: Every id once
+        run: python3 scripts/docs.py check
+      - name: Write the index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # a merge between the fetch and the push: start again from it
+          for attempt in 1 2 3; do
+            git fetch --quiet origin master
+            git reset --quiet --hard origin/master
+            python3 scripts/docs.py index
+            if git diff --quiet; then
+              echo "::notice::the index is up to date"
+              exit 0
+            fi
+            git commit --quiet -am "index(adr): the ADR index written from the headers"
+            if git push origin HEAD:master; then
+              exit 0
+            fi
+          done
+          echo "::error::master moved under three pushes in a row"
+          exit 1

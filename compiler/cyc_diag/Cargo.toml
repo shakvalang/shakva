@@ -1,7 +1,0 @@
-[package]
-name = "cyc_diag"
-version = "0.0.0"
-edition = "2024"
-
-[dependencies]
-cyc_ir.workspace = true

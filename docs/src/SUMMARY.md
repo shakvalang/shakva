@@ -1,9 +1,9 @@
 # Summary
 
 [Overview](overview.md)
-[The Zen of Canary](zen.md)
+[The Zen of Shakva](zen.md)
 
-- [The Canary Programming Language Specification]()
+- [The Shakva Programming Language Specification]()
   - [Introduction](spec/intro.md)
   - [Syntax and grammar]()
     - [Notation](spec/notation.md)
