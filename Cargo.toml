@@ -17,14 +17,14 @@ skc_diag = { path = "compiler/skc_diag" }
 skc_ir = { path = "compiler/skc_ir" }
 skc_lexer = { path = "compiler/skc_lexer" }
 skc_macros = { path = "compiler/skc_macros" }
-darling = { version = "0.23" }
+darling = { version = "0.24" }
 expect-test = { version = "1" }
 indexmap = { version = "2" }
 insta = { version = "1" }
 memchr = { version = "2" }
 proc-macro2 = { version = "1" }
 quote = { version = "1" }
-syn = { version = "2" }
+syn = { version = "3" }
 thiserror = { version = "2" }
 unicode-ident = { version = "1" }
 yansi = { version = "1" }
