@@ -19,3 +19,5 @@ Amends ADR-NNNN: <what>        (none, or one per ADR it amends)
 
 | # | Decision | Status |
 |---|---|---|
+| [0001](0001-lossless-syntax-tree.md) | One lossless syntax tree, built with rowan | accepted |
+| [0002](0002-bytecode-vm.md) | A bytecode VM, Sylva, from the first program | accepted |
