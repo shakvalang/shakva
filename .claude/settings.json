@@ -2,7 +2,7 @@
   "autoMode": {
     "environment": [
       "$defaults",
-      "This is the repository of the Shakva programming language (compiler `skc`, VM Sylva, command `sk`), restarted from scratch in vertical slices: no code yet, the docs under `docs/`. `python3 scripts/docs.py check`, `python3 -m unittest discover -s scripts -p '*_test.py'` and `mdbook build/serve docs` are routine and safe; so will be `cargo build/check/test/run/fmt/clippy` once a slice brings the Cargo workspace back.",
+      "This is the repository of the Shakva programming language (compiler `skc`, VM Sylva, command `sk`), restarted from scratch in vertical slices: no code yet, the docs under `docs/`. `python3 scripts/docs.py check` and `python3 -m unittest discover -s scripts -p '*_test.py'` are routine and safe; so will be `cargo build/check/test/run/fmt/clippy` once a slice brings the Cargo workspace back.",
       "Commits are checked by cocogitto (`cog verify`) through `.githooks/commit-msg`; `python3 scripts/docs.py` manages ADR numbers and the ADR index.",
       "Long or repeated runs (benches, stress loops) belong on `ssh filaco.dev` in a worktree under `~/Projects/shakva/.claude/worktrees/`, never on the Mac."
     ]

@@ -53,15 +53,5 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: python3 scripts/docs.py check ${PR:+--open-prs "$PR"}
 
-  book:
-    name: Book
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: peaceiris/actions-mdbook@v2
-        with:
-          mdbook-version: latest
-      - run: mdbook build docs
-
-  # build and test: the first vertical slice brings the Cargo workspace and this job back
+  # build and test, and the book: the first vertical slices bring the Cargo workspace, the spec
+  # and these jobs back

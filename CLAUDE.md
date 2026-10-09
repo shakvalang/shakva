@@ -12,7 +12,7 @@ The repository is being built from scratch in **vertical slices**: a slice takes
 
 ## Docs
 
-[`docs/`](docs/README.md) holds the book (`mdbook build docs`; empty until the first slice writes a spec section), the decisions (`adr/`: one per file, superseded, never rewritten) and the open questions (GitHub issues labeled `question`). A change writes there only what is new ([when a change writes here](docs/README.md#when-a-change-writes-here)). An ADR is started by `python3 scripts/docs.py new-adr <slug> "<decision>"`, and `adr/README.md`'s table is left alone: `docs.yml` writes it after the merge. `python3 scripts/docs.py check` and `python3 -m unittest discover -s scripts -p '*_test.py'` are what CI runs on the docs.
+[`docs/`](docs/README.md) holds the decisions (`adr/`: one per file, superseded, never rewritten) and the open questions (GitHub issues labeled `question`); the spec and its book come with the first slice that writes a spec section. A change writes there only what is new ([when a change writes here](docs/README.md#when-a-change-writes-here)). An ADR is started by `python3 scripts/docs.py new-adr <slug> "<decision>"`, and `adr/README.md`'s table is left alone: `docs.yml` writes it after the merge. `python3 scripts/docs.py check` and `python3 -m unittest discover -s scripts -p '*_test.py'` are what CI runs on the docs.
 
 ## Commits
 
