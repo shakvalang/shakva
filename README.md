@@ -1,7 +1,5 @@
 # Shakva
 
-***The compile-time sentinel***
+A general-purpose programming language for its author and for Claude to build their projects in: games, web backends, desktop apps, tools. The second goal is learning language and virtual machine design along the way.
 
-A general-purpose language for scripts, tools, services and applications: statically typed but out of your way, safe by default, concurrent without ceremony. Its whole job is to catch trouble before it ships. [The overview](docs/src/overview.md) says what it is, [the zen](docs/src/zen.md) why.
-
-It is early: a lexer, diagnostics and a source map; the parser is next. How we work: [CONTRIBUTING](CONTRIBUTING.md).
+It is being built from scratch in vertical slices. What has been decided is in [`docs/adr/`](docs/adr/README.md); how we work in [CONTRIBUTING](CONTRIBUTING.md).

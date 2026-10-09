@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The ids of `docs/`: an ADR's number, the ADR index, the rules of `design/`.
+"""The ids of `docs/`: an ADR's number, the ADR index, the rules of `design/` once there are any.
 
     python3 scripts/docs.py new-adr <slug> <decision>   # docs/adr/NNNN-<slug>.md, the next number
     python3 scripts/docs.py index                       # docs/adr/README.md's table, from the ADRs
@@ -23,12 +23,9 @@ from typing import Dict, List, Optional
 ROOT = Path(__file__).resolve().parent.parent
 ADR_DIR = ROOT / "docs" / "adr"
 INDEX = ADR_DIR / "README.md"
-# The files that define rules, by the prefix of their ids (docs/README.md, "Identifiers").
-RULES = {
-    "L": "docs/design/00-layers.md",
-    "C": "docs/design/01-conventions.md",
-    "R": "docs/prior-art.md",
-}
+# The files that define rules, by the prefix of their ids (docs/README.md, "Identifiers"): none
+# since the restart from scratch; a `design/` file is added here with its prefix.
+RULES: Dict[str, str] = {}
 
 ADR_FILE = re.compile(r"^(\d{4})-([a-z0-9]+(?:-[a-z0-9]+)*)\.md$")
 TITLE = re.compile(r"^# ADR-(\d{4}): (\S.*)$")
@@ -131,8 +128,8 @@ def write_index(text: str, rows: List[str]) -> str:
     return "\n".join(lines[:start] + [GENERATED, "", TABLE_HEAD, TABLE_RULE] + rows + lines[end:]) + "\n"
 
 
-def check_rules(root: Path = ROOT) -> None:
-    for prefix, name in RULES.items():
+def check_rules(root: Path = ROOT, rules: Dict[str, str] = RULES) -> None:
+    for prefix, name in rules.items():
         seen = set()
         for line in (root / name).read_text(encoding="utf-8").splitlines():
             row = RULE_ROW.match(line)

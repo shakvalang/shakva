@@ -95,13 +95,14 @@ class RulesTest(unittest.TestCase):
     def test_a_rule_id_twice_in_its_file_is_an_error_struck_through_or_not(self):
         # arrange
         root = Path(tempfile.mkdtemp())
-        for prefix, name in docs.RULES.items():
+        rules = {"L": "docs/design/00-layers.md", "C": "docs/design/01-conventions.md"}
+        for prefix, name in rules.items():
             (root / name).parent.mkdir(parents=True, exist_ok=True)
             (root / name).write_text(f"| {prefix}1 | a |\n| ~~{prefix}2~~ | b |\n", encoding="utf-8")
-        (root / docs.RULES["C"]).write_text("| C1 | a |\n| ~~C1~~ | b |\n| L1 | not C's |\n")
+        (root / rules["C"]).write_text("| C1 | a |\n| ~~C1~~ | b |\n| L1 | not C's |\n")
         # act, assert
         with self.assertRaisesRegex(DocsError, "01-conventions.md: C1 twice"):
-            docs.check_rules(root)
+            docs.check_rules(root, rules)
 
     def test_the_rules_of_this_repository_have_each_id_once(self):
         docs.check_rules()

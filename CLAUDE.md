@@ -4,36 +4,18 @@ Guidance for Claude Code in this repository. What holds in every project is in `
 
 ## What this is
 
-**Shakva** is a general-purpose programming language designed for its author and for Claude to build projects in: scripts, CLI tools, services, games. Statically typed with heavy inference, no null (`Option[T]`), typed errors (`!`), immutable by default, green threads with structured scopes and channels, garbage-collected, running on a portable bytecode VM. Tooling (formatter, LSP, package manager) is a first-class deliverable, not an afterthought. The compiler's diagnostics are the primary user interface: an agent writing Shakva learns from the error messages, so they must say what is wrong, where, and what to do.
+**Shakva** is a general-purpose programming language for its author and for Claude to build their projects in: games, web backends, desktop apps, tools. The project has two goals: that language, and learning programming language design, virtual machines included. What reads well to its author wins over what is general.
 
-The principles are in [`docs/src/zen.md`](docs/src/zen.md); a feature that contradicts them is wrong, not the principles. [`docs/src/overview.md`](docs/src/overview.md) fixes the design envelope (notation, peers, out of scope). The language reference lives under `docs/src/spec/` as an mdbook (`mdbook serve docs`); the grammar notation is Wirth-style EBNF (`spec/notation.md`).
+Names: the language is Shakva (`.sk` files); `sk` is the one command a user types (build, run, test, format, add a package); `skc` the compiler; **Sylva** the virtual machine. The decisions taken are the ADRs in [`docs/adr/`](docs/adr/README.md): a lossless syntax tree built with rowan (ADR-0001), a bytecode VM from the first program (ADR-0002). The zen is being rewritten ([#6](https://github.com/shakvalang/shakva/issues/6)) and the overview is gone until it is: a language feature is weighed against the ADRs and the author's taste, iteratively, not against a fixed list.
 
-**[`docs/`](docs/README.md)** holds the book, the rules (`design/`: tables, no prose), the decisions (`adr/`: one per file, superseded, never rewritten) and the references (`prior-art.md`). Update them in the same change as the code they describe, but write only what is new — a spec section, a rule, a real decision, an open question — never what repeats a rule or lists what the code holds ([when a change writes there](docs/README.md#when-a-change-writes-here)). Cite ids (`L6`, `C3`, `D5`, `R1`). An ADR is started by `python3 scripts/docs.py new-adr <slug> "<decision>"`, and `adr/README.md`'s table is left alone: `docs.yml` writes it after the merge. Open questions are GitHub issues labeled `question`.
+The repository is being built from scratch in **vertical slices**: a slice takes one program through every layer, source to a run on Sylva, and lands with its spec section, its tests and its docs. There is no code yet: the first slice brings the Cargo workspace, the toolchain and the CI build job with it.
 
-## Workspace layout
+## Docs
 
-Cargo workspace, nightly toolchain (`rust-toolchain.toml`), `rustfmt.toml` applies.
-
-| crate | what |
-|---|---|
-| `compiler/skc` | the compiler driver (`skc <file>`): CLI (`driver/`), compiler instance and source map (`ci/`), lexer-to-parser bridge and parser (`parse/`), passes (`passes/`) |
-| `compiler/skc_lexer` | the raw lexer: a cursor over bytes producing `Token { kind, len }` with no text, rustc-style |
-| `compiler/skc_ir` | shared data: `source` (positions, spans, source files), `syntax` (tokens with symbols, interner, the `Nest` AST) |
-| `compiler/skc_diag` | diagnostics: `Diagnostic`, `DiagnosticContext`, emitter trait |
-| `compiler/skc_macros` | proc macros: `#[derive(Diagnostic)]` |
-| `flock` | the package manager / build tool: placeholder (`Hello, world!`) |
-
-Naming: the compiler is `skc`, the package manager `flock`, the AST `Nest`. Source files are `.sk` (the lexer/parser crates follow rustc's structure: `skc_lexer` ≈ `rustc_lexer`, `parse/lexer.rs` ≈ `rustc_parse::lexer`).
-
-## Build & test
-
-- `cargo build` · `cargo run -p skc -- <file.sk>` · `cargo check --workspace`
-- `cargo test --workspace` — all tests. Snapshot tests use `expect-test` (`UPDATE_EXPECT=1 cargo test` rewrites them) and `insta`.
-- `mdbook build docs` — the book (`docs/book/` is untracked output). CI builds it on every PR.
-- Benches and repeated runs go to `ssh filaco.dev` (global rule); a quick `cargo test` on the Mac is fine.
+[`docs/`](docs/README.md) holds the decisions (`adr/`: one per file, superseded, never rewritten) and the open questions (GitHub issues labeled `question`); the spec and its book come with the first slice that writes a spec section. A change writes there only what is new ([when a change writes here](docs/README.md#when-a-change-writes-here)). An ADR is started by `python3 scripts/docs.py new-adr <slug> "<decision>"`, and `adr/README.md`'s table is left alone: `docs.yml` writes it after the merge. `python3 scripts/docs.py check` and `python3 -m unittest discover -s scripts -p '*_test.py'` are what CI runs on the docs.
 
 ## Commits
 
-Conventional Commits, enforced by [cocogitto](https://docs.cocogitto.io/) (`cog`) on `commit-msg`: `type(scope): subject` (`feat(skc): …`, `fix(skc_macros): …`, `docs(spec): …`; `cog commit feat skc "subject"` writes one). PRs are squash-merged and CI checks the PR **title** too. Hooks are plain scripts in `.githooks/` (`commit-msg`: `cog verify`; `pre-push`: `cargo fmt --check` and the tests), activated per clone with `git config core.hooksPath .githooks`.
+Conventional Commits, enforced by [cocogitto](https://docs.cocogitto.io/) (`cog`) on `commit-msg`: `type(scope): subject` (`feat(skc): …`, `fix(sylva): …`, `docs(spec): …`; `cog commit feat skc "subject"` writes one). PRs are squash-merged and CI checks the PR **title** too. Hooks are plain scripts in `.githooks/` (`commit-msg`: `cog verify`; `pre-push`: the docs checks, and the build and tests once there is code), activated per clone with `git config core.hooksPath .githooks`.
 
 **Worktrees** (`.claude/worktrees/`) go when their PR merges: a `SessionStart` hook removes, in the background, a clean, idle worktree and the local branch whose PR is merged and whose upstream GitHub deleted (`.claude/hooks/prune-merged-worktrees.sh --dry-run` shows what it would).
