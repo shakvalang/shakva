@@ -1,0 +1,18 @@
+Expr =
+  BinaryExpr
+| UnaryExpr
+| ParenExpr
+| LitExpr
+
+BinaryExpr =
+  lhs: Expr op: ('+' | '-' | '*' | '/') rhs: Expr
+
+UnaryExpr =
+  '-' Expr
+
+ParenExpr = 
+  '(' Expr ')'
+
+LitExpr = 
+  'IntLit' | 'FloatLit'
+

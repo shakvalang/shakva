@@ -1,0 +1,37 @@
+grammar = "src/syntax/shakva.ungram"
+output-dir = "src/syntax"
+
+[kinds]
+trivia = [
+    { name = "WHITESPACE", doc = 'A sequence of whitespace characters excluding CR (`\r`) and LF (`\n`).' },
+    { name = "BLOCK_COMMENT", doc = """
+A block comment delimited by `/*` and `*/`. Block comments can be nested.
+
+A comment containing a line ending acts as a line ending for statement
+separation; otherwise, it acts as a space.
+An unclosed comment produces an unterminated-comment diagnostic.
+    """ },
+    { name = "LINE_COMMENT", doc = "A line comment starting with `//`, excluding the terminating line ending." },
+]
+
+punct = [
+    { name = "PLUS", text = "+" },
+    { name = "MINUS", text = "-" },
+    { name = "STAR", text = "*" },
+    { name = "SLASH", text = "/" },
+    { name = "LPAREN", text = "(" },
+    { name = "RPAREN", text = ")" },
+]
+
+tokens = [
+    { name = "UNKNOWN", doc = "A character the lexer does not know." },
+    { name = "NL", doc = 'A single line ending: LF (`\n`) or CRLF (`\r\n`).' },
+    { name = "INT_LIT" },
+    { name = "FLOAT_LIT" },
+]
+
+
+special-tokens = [{ name = "EOF", doc = "End of input." }]
+
+# Nodes `shakva.ungram` has no rule for.
+extra-nodes = [{ name = "ERROR", doc = "What could not be parsed." }]

@@ -3,6 +3,24 @@ name = "shakva"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+incremental = ["dep:salsa"]
+repl = ["incremental"]
+lsp = ["incremental"]
+rust_codegen = ["dep:prettyplease", "dep:proc-macro2", "dep:quote", "dep:syn"]
+sdk_dev_tools = ["rust_codegen", "dep:ungrammar"]
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+heck = { version = "0.5" }
+prettyplease = { version = "0.3", optional = true }
+proc-macro2 = { version = "1", optional = true }
+quote = { version = "1", optional = true }
 rowan = { version = "0.17" }
+salsa = { version = "0.28", optional = true }
+serde = { version = "1", features = ["derive"] }
+syn = { version = "3", features = ["full"], optional = true }
+thiserror = { version = "2" }
+toml = { version = "1" }
+ungrammar = { version = "1", optional = true }
