@@ -1,3 +1,6 @@
+use clap::Parser;
+use shakva::driver::{self, DriverArgs};
+
 fn main() {
-    println!("Hello, world!");
+    driver::execute(DriverArgs::parse())
 }
