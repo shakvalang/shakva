@@ -2,7 +2,7 @@
 set -e
 
 if ! command -v cog >/dev/null 2>&1; then
-    echo "commit-msg: cog not found - install cocogitto (brew install cocogitto)" >&2
+    echo "commit-msg: cog not found - install cocogitto" >&2
     exit 1
 fi
 

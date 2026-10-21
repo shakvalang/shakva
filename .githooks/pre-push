@@ -1,5 +1,0 @@
-#!/bin/sh
-set -e
-
-python3 -m unittest discover -s scripts -p '*_test.py'
-python3 scripts/docs.py check

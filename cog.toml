@@ -5,10 +5,6 @@ ignore_fixup_commits = true
 tag_prefix = "v"
 branch_whitelist = ["master"]
 
-# docs.yml's commit of the ADR index: the PR that changed an ADR is in the changelog already
-[commit_types]
-index = { changelog_title = "ADR index", omit_from_changelog = true }
-
 [changelog]
 path = "CHANGELOG.md"
 template = "remote"
