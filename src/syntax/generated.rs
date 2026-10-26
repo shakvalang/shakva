@@ -37,36 +37,16 @@ pub enum ShakvaKind {
 }
 impl ShakvaKind {
     pub fn is_trivia(self) -> bool {
-        match self {
-            Self::WHITESPACE => true,
-            Self::BLOCK_COMMENT => true,
-            Self::LINE_COMMENT => true,
-            _ => false,
-        }
+        (self as u16) <= Self::LINE_COMMENT as u16
     }
     pub fn is_node(self) -> bool {
-        match self {
-            Self::ERROR => true,
-            Self::BINARY_EXPR => true,
-            Self::UNARY_EXPR => true,
-            Self::PAREN_EXPR => true,
-            Self::LIT_EXPR => true,
-            _ => false,
-        }
+        (self as u16) >= Self::ERROR as u16
     }
     pub fn is_token(self) -> bool {
         !self.is_node()
     }
     pub fn is_punct(self) -> bool {
-        match self {
-            Self::PLUS => true,
-            Self::MINUS => true,
-            Self::STAR => true,
-            Self::SLASH => true,
-            Self::LPAREN => true,
-            Self::RPAREN => true,
-            _ => false,
-        }
+        (self as u16) >= Self::PLUS as u16 && (self as u16) <= Self::RPAREN as u16
     }
     pub fn fixed_text(self) -> Option<&'static str> {
         match self {
