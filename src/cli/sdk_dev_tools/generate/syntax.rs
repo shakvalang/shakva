@@ -40,9 +40,18 @@ pub(super) fn generate(args: Args) -> Result<(), Error> {
     })?;
 
     let gen_sources = shakva::syntax::codegen::generate(&config.kinds, &grammar)?;
-    let kinds_path = config_dir.join(&config.output_dir).join("generated.rs");
+    let output_dir = config_dir.join(&config.output_dir);
 
-    update_generated_file(&kinds_path, &gen_sources.kinds_src, args.check)
+    update_generated_file(
+        &output_dir.join("generated.rs"),
+        &gen_sources.kinds_src,
+        args.check,
+    )
+    // update_generated_file(
+    //     &output_dir.join("ast/generated.rs"),
+    //     &gen_sources.ast_src,
+    //     args.check,
+    // )
 }
 
 fn update_generated_file(path: &Path, expected: &str, check: bool) -> Result<(), Error> {

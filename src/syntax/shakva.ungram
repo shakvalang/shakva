@@ -1,3 +1,22 @@
+// The shape of every node the Shakva parser makes: which children it has, in what order. 
+// `shakva generate syntax <syntax_codegen.toml>` makes the node kinds of it, 
+// and the typed views of `shakva::syntax::ast`. 
+// It is an ungrammar:
+//
+//   Node = Rule          a node, or an enum of nodes if the rule only lists nodes: `Expr = BinExpr | ...`
+//   'text'               a token spelled so; `'Ident'`, a token of that kind; `'AnyToken'`, any token at all
+//   A B, A | B           a sequence, alternatives
+//   A?, A*, (A)          optional, repeated, grouped
+//   label:A              names what an accessor returns; in an enum, the variant
+
+
+Semi =
+  (';' | NL)
+
+NL =
+  '\n'
+| '\r' '\n'
+
 Expr =
   BinaryExpr
 | UnaryExpr

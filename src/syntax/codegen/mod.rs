@@ -10,10 +10,48 @@ use ungrammar::Grammar;
 pub fn generate(config: &KindsConfig, src: &str) -> Result<GeneratedSyntaxSources, Error> {
     let grammar: Grammar = src.parse()?;
     let kinds = lower_kinds(config, &grammar)?;
+    // let ast = lower_ast(&grammar, &kinds)?;
 
-    let kinds_src = generate_kinds(&kinds)?;
+    Ok(GeneratedSyntaxSources {
+        kinds_src: generate_kinds(&kinds)?,
+        // ast_src: generate_ast(&ast)?,
+    })
+}
 
-    Ok(GeneratedSyntaxSources { kinds_src })
+#[derive(Debug)]
+pub struct GeneratedSyntaxSources {
+    pub kinds_src: String,
+    // pub ast_src: String,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("failed to parse grammar")]
+    GrammarParseFailed(#[from] ungrammar::Error),
+    #[error("failed to generate source file from tokens")]
+    GenerateSourceFileFailed(#[from] syn::Error),
+    #[error("invalid grammar tokens:\n{}", .0.join("\n"))]
+    InvalidGrammarTokens(Vec<String>),
+    #[error("invalid syntax kinds:\n{}", .0.join("\n"))]
+    InvalidKinds(Vec<String>),
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct KindsConfig {
+    trivia: Vec<KindConfig>,
+    punct: Vec<KindConfig>,
+    tokens: Vec<KindConfig>,
+    special_tokens: Vec<KindConfig>,
+    extra_nodes: Vec<KindConfig>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KindConfig {
+    name: String,
+    doc: Option<String>,
+    text: Option<String>,
 }
 
 fn lower_kinds<'cfg>(config: &'cfg KindsConfig, grammar: &Grammar) -> Result<Kinds<'cfg>, Error> {
@@ -364,39 +402,28 @@ enum KindCategory {
     Node,
 }
 
+fn lower_ast(grammar: &Grammar, kinds: &Kinds<'_>) {}
+
+fn generate_ast(kinds: &Kinds<'_>) {}
+
 #[derive(Debug)]
-pub struct GeneratedSyntaxSources {
-    pub kinds_src: String,
+struct Ast {
+    nodes: Vec<AstNodeDef>,
+    unions: Vec<AstUnionDef>,
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("failed to parse grammar")]
-    GrammarParseFailed(#[from] ungrammar::Error),
-    #[error("failed to generate source file from tokens")]
-    GenerateSourceFileFailed(#[from] syn::Error),
-    #[error("invalid grammar tokens:\n{}", .0.join("\n"))]
-    InvalidGrammarTokens(Vec<String>),
-    #[error("invalid syntax kinds:\n{}", .0.join("\n"))]
-    InvalidKinds(Vec<String>),
+#[derive(Debug)]
+struct AstNodeDef {
+    name: proc_macro2::Ident,
+    kind_index: usize,
+    // fields: Vec<AstField>,
 }
 
-#[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "kebab-case")]
-pub struct KindsConfig {
-    trivia: Vec<KindConfig>,
-    punct: Vec<KindConfig>,
-    tokens: Vec<KindConfig>,
-    special_tokens: Vec<KindConfig>,
-    extra_nodes: Vec<KindConfig>,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct KindConfig {
-    name: String,
-    doc: Option<String>,
-    text: Option<String>,
+#[derive(Debug)]
+struct AstUnionDef {
+    name: proc_macro2::Ident,
+    variants: Vec<ungrammar::Node>,
+    kind_range: (usize, usize),
 }
 
 #[cfg(test)]

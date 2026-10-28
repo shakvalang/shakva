@@ -30,7 +30,6 @@ tokens = [
     { name = "FLOAT_LIT" },
 ]
 
-
 special-tokens = [{ name = "EOF", doc = "End of input." }]
 
 # Nodes `shakva.ungram` has no rule for.
