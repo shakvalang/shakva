@@ -15,6 +15,7 @@ pub(super) fn dispatch(args: Args) -> Result<(), Error> {
     use Command::*;
 
     match args.cmd {
+        Repl => todo!(),
         Build => todo!(),
         Run => todo!(),
         Test => todo!(),
@@ -23,8 +24,10 @@ pub(super) fn dispatch(args: Args) -> Result<(), Error> {
     }
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Default, Subcommand)]
 enum Command {
+    #[default]
+    Repl,
     Build,
     Run,
     Test,
