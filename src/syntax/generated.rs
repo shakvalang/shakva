@@ -6,38 +6,134 @@
 pub enum ShakvaKind {
     /// A sequence of whitespace characters excluding CR (`\r`) and LF (`\n`).
     WHITESPACE,
-    /// A block comment delimited by `/*` and `*/`. Block comments can be nested.
-    ///
-    /// A comment containing a line ending acts as a line ending for statement
-    /// separation; otherwise, it acts as a space.
-    /// An unclosed comment produces an unterminated-comment diagnostic.
-    BLOCK_COMMENT,
-    /// A line comment starting with `//`, excluding the terminating line ending.
-    LINE_COMMENT,
+    /// A comment starting with `#`, excluding the terminating line ending.
+    COMMENT,
+    /// `,`
+    COMMA,
+    /// `:`
+    COLON,
+    /// `.`
+    DOT,
+    /// `;`
+    SEMI,
+    /// `+`
     PLUS,
+    /// `-`
     MINUS,
+    /// `*`
     STAR,
+    /// `/`
     SLASH,
+    /// `%`
+    PERCENT,
+    /// `!`
+    EXCL,
+    /// `**`
+    DSTAR,
+    /// `//`
+    DSLASH,
+    /// `>`
+    GT,
+    /// `<`
+    LT,
+    /// `==`
+    EQ,
+    /// `>=`
+    GE,
+    /// `<=`
+    LE,
+    /// `=`
+    REBIND,
+    /// `:=`
+    BIND,
+    /// `+=`
+    PLUS_EQ,
+    /// `-=`
+    MINUS_EQ,
+    /// `*=`
+    STAR_EQ,
+    /// `/=`
+    SLASH_EQ,
+    /// `%=`
+    PERCENT_EQ,
+    /// `**=`
+    DSTAR_EQ,
+    /// `//=`
+    DSLASH_EQ,
+    /// `{`
+    LBRACE,
+    /// `}`
+    RBRACE,
+    /// `[`
+    LBRACKET,
+    /// `]`
+    RBRACKET,
+    /// `(`
     LPAREN,
+    /// `)`
     RPAREN,
+    /// `?`
+    QUEST,
+    /// `_`
+    WILDCARD,
+    /// `->`
+    ARROW,
+    /// `=>`
+    FAT_ARROW,
     /// A character the lexer does not know.
     UNKNOWN,
     /// A single line ending: LF (`\n`) or CRLF (`\r\n`).
     NL,
+    /// TBD
     INT_LIT,
+    /// TBD
     FLOAT_LIT,
+    /// TBD
+    IDENT,
+    /// `match`
+    MATCH,
+    /// `if`
+    IF,
+    /// `elif`
+    ELIF,
+    /// `else`
+    ELSE,
+    /// `mut`
+    MUT,
+    /// `and`
+    AND,
+    /// `or`
+    OR,
     /// End of input.
     EOF,
     /// What could not be parsed.
     ERROR,
+    SHAKVA_FILE,
+    STATEMENTS,
+    BINDING,
+    ASSIGNMENT,
+    REF_EXPR,
     BINARY_EXPR,
-    UNARY_EXPR,
     PAREN_EXPR,
     LIT_EXPR,
+    CALL_EXPR,
+    BLOCK_EXPR,
+    IF_EXPR,
+    LAMBDA_EXPR,
+    PREFIX_EXPR,
+    MATCH_EXPR,
+    CALL_SUFFIX,
+    PAREN_ARGS,
+    IF_BRANCH,
+    ELIF_BRANCH,
+    ELSE_BRANCH,
+    LAMBDA_PARAMS,
+    MATCH_ARM,
+    MATCH_PATTERN,
 }
 impl ShakvaKind {
     pub fn is_trivia(self) -> bool {
-        (self as u16) <= Self::LINE_COMMENT as u16
+        (self as u16) <= Self::COMMENT as u16
     }
     pub fn is_node(self) -> bool {
         (self as u16) >= Self::ERROR as u16
@@ -46,21 +142,58 @@ impl ShakvaKind {
         !self.is_node()
     }
     pub fn is_punct(self) -> bool {
-        (self as u16) >= Self::PLUS as u16 && (self as u16) <= Self::RPAREN as u16
+        (self as u16) >= Self::COMMA as u16 && (self as u16) <= Self::FAT_ARROW as u16
     }
     pub fn fixed_text(self) -> Option<&'static str> {
         match self {
+            Self::COMMA => Some(","),
+            Self::COLON => Some(":"),
+            Self::DOT => Some("."),
+            Self::SEMI => Some(";"),
             Self::PLUS => Some("+"),
             Self::MINUS => Some("-"),
             Self::STAR => Some("*"),
             Self::SLASH => Some("/"),
+            Self::PERCENT => Some("%"),
+            Self::EXCL => Some("!"),
+            Self::DSTAR => Some("**"),
+            Self::DSLASH => Some("//"),
+            Self::GT => Some(">"),
+            Self::LT => Some("<"),
+            Self::EQ => Some("=="),
+            Self::GE => Some(">="),
+            Self::LE => Some("<="),
+            Self::REBIND => Some("="),
+            Self::BIND => Some(":="),
+            Self::PLUS_EQ => Some("+="),
+            Self::MINUS_EQ => Some("-="),
+            Self::STAR_EQ => Some("*="),
+            Self::SLASH_EQ => Some("/="),
+            Self::PERCENT_EQ => Some("%="),
+            Self::DSTAR_EQ => Some("**="),
+            Self::DSLASH_EQ => Some("//="),
+            Self::LBRACE => Some("{"),
+            Self::RBRACE => Some("}"),
+            Self::LBRACKET => Some("["),
+            Self::RBRACKET => Some("]"),
             Self::LPAREN => Some("("),
             Self::RPAREN => Some(")"),
+            Self::QUEST => Some("?"),
+            Self::WILDCARD => Some("_"),
+            Self::ARROW => Some("->"),
+            Self::FAT_ARROW => Some("=>"),
+            Self::MATCH => Some("match"),
+            Self::IF => Some("if"),
+            Self::ELIF => Some("elif"),
+            Self::ELSE => Some("else"),
+            Self::MUT => Some("mut"),
+            Self::AND => Some("and"),
+            Self::OR => Some("or"),
             _ => None,
         }
     }
     pub(crate) fn from_raw(raw: rowan::SyntaxKind) -> Self {
-        assert!(raw.0 <= Self::LIT_EXPR as u16, "invalid syntax kind: {}", raw.0,);
+        assert!(raw.0 <= Self::MATCH_PATTERN as u16, "invalid syntax kind: {}", raw.0,);
         unsafe { std::mem::transmute::<u16, Self>(raw.0) }
     }
 }

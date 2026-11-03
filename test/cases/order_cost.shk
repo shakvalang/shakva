@@ -1,5 +1,5 @@
-delivery_cost := total => if total >= 3000 { 0 } else { 300 }
+delivery_cost := { total => if total >= 3000 { 0 } else { 300 } }
 
 mut total := 1200 * 2
 total += delivery_cost(total)
-total // 2700
+total # 2700

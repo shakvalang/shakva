@@ -9,29 +9,92 @@
 //   A?, A*, (A)          optional, repeated, grouped
 //   label:A              names what an accessor returns; in an enum, the variant
 
+ShakvaFile =
+  Statements
 
-Semi =
-  (';' | NL)
+Statements =
+  (Statement? (';' | 'NL'))* Statement?
 
-NL =
-  '\n'
-| '\r' '\n'
+Statement =
+  Binding
+| Assignment
+| Expr
+
+Binding =
+  modifier: 'mut'? name: 'Ident' ':=' value: Expr
+
+Assignment =
+  target: RefExpr 
+  op: ('=' | '+=' | '-=' | '*=' | '/=' | '%=' | '**=' | '//=') 
+  value: Expr
 
 Expr =
   BinaryExpr
-| UnaryExpr
 | ParenExpr
 | LitExpr
+| RefExpr
+| CallExpr
+| BlockExpr
+| IfExpr
+| LambdaExpr
+| PrefixExpr
+| MatchExpr
 
 BinaryExpr =
-  lhs: Expr op: ('+' | '-' | '*' | '/') rhs: Expr
-
-UnaryExpr =
-  '-' Expr
+  lhs: Expr 
+  op: ('+' | '-' | '*' | '/' | '%' | '**' | '//' | '>' | '<' | '==' | '>=' | '<=') 
+  rhs: Expr
 
 ParenExpr = 
   '(' Expr ')'
 
 LitExpr = 
-  'IntLit' | 'FloatLit'
+  'IntLit' 
+| 'FloatLit'
 
+RefExpr =
+  name: 'Ident'
+
+CallExpr =
+  callee: Expr CallSuffix
+
+CallSuffix =
+  ParenArgs trailing_lambda: LambdaExpr?
+| trailing_lambda: LambdaExpr
+
+ParenArgs =
+  '(' (Expr (',' Expr)* ','?)? ')'
+
+BlockExpr =
+  '{' body: Statements '}'
+
+IfExpr =
+  IfBranch ElifBranch* ElseBranch?
+
+IfBranch =
+  'if' cond: Expr body: BlockExpr
+
+ElifBranch =
+  'elif' cond: Expr body: BlockExpr
+
+ElseBranch =
+  'else' body: BlockExpr
+
+LambdaExpr =
+  '{' LambdaParams? '=>' body: Statements '}'
+
+LambdaParams =
+  'Ident' (',' 'Ident')* ','?
+
+PrefixExpr =
+  op: ('-' | '!') rhs: Expr
+
+MatchExpr =
+  'match' scrutinee: Expr '{' MatchArm (',' MatchArm)* ','? '}'
+
+MatchArm =
+  pattern: MatchPattern '=>' body: Expr
+
+MatchPattern =
+  '-'? 'IntLit'
+| '_'

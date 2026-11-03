@@ -4,30 +4,71 @@ output-dir = "src/syntax"
 [kinds]
 trivia = [
     { name = "WHITESPACE", doc = 'A sequence of whitespace characters excluding CR (`\r`) and LF (`\n`).' },
-    { name = "BLOCK_COMMENT", doc = """
-A block comment delimited by `/*` and `*/`. Block comments can be nested.
-
-A comment containing a line ending acts as a line ending for statement
-separation; otherwise, it acts as a space.
-An unclosed comment produces an unterminated-comment diagnostic.
-    """ },
-    { name = "LINE_COMMENT", doc = "A line comment starting with `//`, excluding the terminating line ending." },
+    { name = "COMMENT", doc = "A comment starting with `#`, excluding the terminating line ending." },
 ]
 
 punct = [
-    { name = "PLUS", text = "+" },
-    { name = "MINUS", text = "-" },
-    { name = "STAR", text = "*" },
-    { name = "SLASH", text = "/" },
-    { name = "LPAREN", text = "(" },
-    { name = "RPAREN", text = ")" },
+    { name = "COMMA", text = ",", doc = "`,`" },
+    { name = "COLON", text = ":", doc = "`:`" },
+    { name = "DOT", text = ".", doc = "`.`" },
+    { name = "SEMI", text = ";", doc = "`;`" },
+
+    { name = "PLUS", text = "+", doc = "`+`" },
+    { name = "MINUS", text = "-", doc = "`-`" },
+    { name = "STAR", text = "*", doc = "`*`" },
+    { name = "SLASH", text = "/", doc = "`/`" },
+    { name = "PERCENT", text = "%", doc = "`%`" },
+    { name = "EXCL", text = "!", doc = "`!`" },
+    { name = "DSTAR", text = "**", doc = "`**`" },
+    { name = "DSLASH", text = "//", doc = "`//`" },
+
+    { name = "GT", text = ">", doc = "`>`" },
+    { name = "LT", text = "<", doc = "`<`" },
+    { name = "EQ", text = "==", doc = "`==`" },
+    { name = "GE", text = ">=", doc = "`>=`" },
+    { name = "LE", text = "<=", doc = "`<=`" },
+
+    { name = "REBIND", text = "=", doc = "`=`" },
+    { name = "BIND", text = ":=", doc = "`:=`" },
+
+    { name = "PLUS_EQ", text = "+=", doc = "`+=`" },
+    { name = "MINUS_EQ", text = "-=", doc = "`-=`" },
+    { name = "STAR_EQ", text = "*=", doc = "`*=`" },
+    { name = "SLASH_EQ", text = "/=", doc = "`/=`" },
+    { name = "PERCENT_EQ", text = "%=", doc = "`%=`" },
+    { name = "DSTAR_EQ", text = "**=", doc = "`**=`" },
+    { name = "DSLASH_EQ", text = "//=", doc = "`//=`" },
+
+    { name = "LBRACE", text = "{", doc = "`{`" },
+    { name = "RBRACE", text = "}", doc = "`}`" },
+    { name = "LBRACKET", text = "[", doc = "`[`" },
+    { name = "RBRACKET", text = "]", doc = "`]`" },
+    { name = "LPAREN", text = "(", doc = "`(`" },
+    { name = "RPAREN", text = ")", doc = "`)`" },
+
+    { name = "QUEST", text = "?", doc = "`?`" },
+    { name = "WILDCARD", text = "_", doc = "`_`" },
+
+    { name = "ARROW", text = "->", doc = "`->`" },
+    { name = "FAT_ARROW", text = "=>", doc = "`=>`" },
 ]
 
 tokens = [
     { name = "UNKNOWN", doc = "A character the lexer does not know." },
     { name = "NL", doc = 'A single line ending: LF (`\n`) or CRLF (`\r\n`).' },
-    { name = "INT_LIT" },
-    { name = "FLOAT_LIT" },
+    { name = "INT_LIT", doc = "TBD" },
+    { name = "FLOAT_LIT", doc = "TBD" },
+    { name = "IDENT", doc = "TBD" },
+
+    { name = "MATCH", text = "match", doc = "`match`" },
+    { name = "IF", text = "if", doc = "`if`" },
+    { name = "ELIF", text = "elif", doc = "`elif`" },
+    { name = "ELSE", text = "else", doc = "`else`" },
+
+    { name = "MUT", text = "mut", doc = "`mut`" },
+
+    { name = "AND", text = "and", doc = "`and`" },
+    { name = "OR", text = "or", doc = "`or`" },
 ]
 
 special-tokens = [{ name = "EOF", doc = "End of input." }]
