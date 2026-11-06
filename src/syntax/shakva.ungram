@@ -10,10 +10,10 @@
 //   label:A              names what an accessor returns; in an enum, the variant
 
 ShakvaFile =
-  Statements
+  Statements?
 
 Statements =
-  (Statement? (';' | 'NL'))* Statement?
+  Statement ((';' | 'NL') Statement)* (';' | 'NL')?
 
 Statement =
   Binding
@@ -21,12 +21,12 @@ Statement =
 | Expr
 
 Binding =
-  modifier: 'mut'? name: 'Ident' ':=' value: Expr
+  modifier: 'mut'? lhs: 'Ident' ':=' rhs: Expr
 
 Assignment =
-  target: RefExpr 
+  lhs: RefExpr 
   op: ('=' | '+=' | '-=' | '*=' | '/=' | '%=' | '**=' | '//=') 
-  value: Expr
+  rhs: Expr
 
 Expr =
   BinaryExpr
@@ -66,7 +66,7 @@ ParenArgs =
   '(' (Expr (',' Expr)* ','?)? ')'
 
 BlockExpr =
-  '{' body: Statements '}'
+  '{' stmts: Statements? '}'
 
 IfExpr =
   IfBranch ElifBranch* ElseBranch?
@@ -81,7 +81,7 @@ ElseBranch =
   'else' body: BlockExpr
 
 LambdaExpr =
-  '{' LambdaParams? '=>' body: Statements '}'
+  '{' LambdaParams? '=>' body: Statements? '}'
 
 LambdaParams =
   'Ident' (',' 'Ident')* ','?
@@ -90,10 +90,10 @@ PrefixExpr =
   op: ('-' | '!') rhs: Expr
 
 MatchExpr =
-  'match' scrutinee: Expr '{' MatchArm (',' MatchArm)* ','? '}'
+  'match' scrutinee: Expr '{' (MatchArm ((',' | 'NL') MatchArm)* (',' | 'NL')?) '}'
 
 MatchArm =
-  pattern: MatchPattern '=>' body: Expr
+  MatchPattern '=>' matched: Expr
 
 MatchPattern =
   '-'? 'IntLit'

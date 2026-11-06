@@ -46,12 +46,12 @@ pub(super) fn generate(args: Args) -> Result<(), Error> {
         &output_dir.join("generated.rs"),
         &gen_sources.kinds_src,
         args.check,
+    )?;
+    update_generated_file(
+        &output_dir.join("ast/generated.rs"),
+        &gen_sources.ast_src,
+        args.check,
     )
-    // update_generated_file(
-    //     &output_dir.join("ast/generated.rs"),
-    //     &gen_sources.ast_src,
-    //     args.check,
-    // )
 }
 
 fn update_generated_file(path: &Path, expected: &str, check: bool) -> Result<(), Error> {

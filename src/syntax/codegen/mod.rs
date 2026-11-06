@@ -3,25 +3,28 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use heck::ToShoutySnakeCase;
+use either::Either;
+use heck::{ToShoutySnakeCase, ToSnakeCase};
+use indexmap::{IndexMap, map::Entry};
 use quote::{format_ident, quote};
-use ungrammar::Grammar;
+
+use crate::syntax::codegen::FieldTarget::Node;
 
 pub fn generate(config: &KindsConfig, src: &str) -> Result<GeneratedSyntaxSources, Error> {
-    let grammar: Grammar = src.parse()?;
+    let grammar: ungrammar::Grammar = src.parse()?;
     let kinds = lower_kinds(config, &grammar)?;
-    // let ast = lower_ast(&grammar, &kinds)?;
+    let ast = lower_ast(&grammar, &kinds)?;
 
     Ok(GeneratedSyntaxSources {
         kinds_src: generate_kinds(&kinds)?,
-        // ast_src: generate_ast(&ast)?,
+        ast_src: generate_ast(&ast, &grammar, &kinds)?,
     })
 }
 
 #[derive(Debug)]
 pub struct GeneratedSyntaxSources {
     pub kinds_src: String,
-    // pub ast_src: String,
+    pub ast_src: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -34,6 +37,8 @@ pub enum Error {
     InvalidGrammarTokens(Vec<String>),
     #[error("invalid syntax kinds:\n{}", .0.join("\n"))]
     InvalidKinds(Vec<String>),
+    #[error("invalid ast:\n{}", .0.join("\n"))]
+    InvalidAst(Vec<String>),
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -54,8 +59,11 @@ pub struct KindConfig {
     text: Option<String>,
 }
 
-fn lower_kinds<'cfg>(config: &'cfg KindsConfig, grammar: &Grammar) -> Result<Kinds<'cfg>, Error> {
-    let mut entries = Vec::new();
+fn lower_kinds<'cfg>(
+    config: &'cfg KindsConfig,
+    grammar: &ungrammar::Grammar,
+) -> Result<Kinds<'cfg>, Error> {
+    let mut entries = vec![];
 
     append_config_kinds(&mut entries, &config.trivia, KindCategory::Trivia);
     append_config_kinds(&mut entries, &config.punct, KindCategory::Punct);
@@ -104,7 +112,7 @@ fn append_config_kinds<'cfg>(
     }
 }
 
-fn append_grammar_nodes(entries: &mut Vec<Kind<'_>>, grammar: &Grammar) {
+fn append_grammar_nodes(entries: &mut Vec<Kind<'_>>, grammar: &ungrammar::Grammar) {
     for node in grammar.iter() {
         let data = &grammar[node];
         if is_node_union(&data.rule) {
@@ -133,7 +141,7 @@ fn is_node_union(rule: &ungrammar::Rule) -> bool {
 }
 
 fn check_kinds(entries: &[Kind<'_>]) -> Result<(), Error> {
-    let mut problems = Vec::new();
+    let mut problems = vec![];
     let mut names = HashSet::new();
     let mut texts = HashSet::new();
     let mut categories = HashSet::new();
@@ -203,9 +211,9 @@ fn check_kinds(entries: &[Kind<'_>]) -> Result<(), Error> {
 
 fn resolve_grammar_tokens(
     entries: &[Kind<'_>],
-    grammar: &Grammar,
+    grammar: &ungrammar::Grammar,
 ) -> Result<HashMap<ungrammar::Token, usize>, Error> {
-    let mut problems = Vec::new();
+    let mut problems = vec![];
     let mut by_text = HashMap::new();
     let mut named_without_text = HashMap::new();
     for (index, kind) in entries.iter().enumerate() {
@@ -402,28 +410,304 @@ enum KindCategory {
     Node,
 }
 
-fn lower_ast(grammar: &Grammar, kinds: &Kinds<'_>) {}
+fn lower_ast(grammar: &ungrammar::Grammar, kinds: &Kinds<'_>) -> Result<Ast, Error> {
+    let kind_by_name: HashMap<&str, usize> = kinds
+        .entries
+        .iter()
+        .enumerate()
+        .filter(|(_, kind)| kind.category == KindCategory::Node)
+        .map(|(index, kind)| (kind.name.as_ref(), index))
+        .collect();
 
-fn generate_ast(kinds: &Kinds<'_>) {}
+    let mut nodes = vec![];
+    let mut unions = vec![];
+
+    for node in grammar.iter() {
+        let data = &grammar[node];
+        let name = format_ident!("{}", data.name);
+
+        if is_node_union(&data.rule) {
+            let ungrammar::Rule::Alt(alternatives) = &data.rule else {
+                unreachable!();
+            };
+
+            let variants = alternatives
+                .iter()
+                .map(|rule| {
+                    let ungrammar::Rule::Node(variant) = rule else {
+                        unreachable!();
+                    };
+                    *variant
+                })
+                .collect();
+
+            unions.push(UnionDef {
+                name,
+                variants,
+                kind_indices: vec![],
+            });
+            continue;
+        }
+
+        let kind_name = data.name.to_shouty_snake_case();
+        let kind_index = *kind_by_name.get(kind_name.as_str()).ok_or_else(|| {
+            Error::InvalidAst(vec![format!("no syntax kind for node {}", data.name)])
+        })?;
+
+        let mut fields = IndexMap::new();
+        lower_rule(&mut fields, grammar, kinds, &grammar[node].rule, None).map_err(
+            |err| match err {
+                Error::InvalidAst(problems) => Error::InvalidAst(
+                    problems
+                        .into_iter()
+                        .map(|problem| format!("{}: {problem}", data.name))
+                        .collect(),
+                ),
+                other => other,
+            },
+        )?;
+
+        nodes.push(NodeDef {
+            name,
+            kind_index,
+            fields: fields.into_values().collect(),
+        });
+    }
+
+    // Expand nested unions
+    // Statement -> Binding, Assignment, Expr -> BinaryExpr, ...
+    for union in &mut unions {
+        union.kind_indices = resolve_union_kinds(&union.variants, grammar, &kind_by_name)?;
+    }
+
+    Ok(Ast { nodes, unions })
+}
+
+fn lower_rule(
+    fields: &mut IndexMap<proc_macro2::Ident, Field>,
+    grammar: &ungrammar::Grammar,
+    kinds: &Kinds<'_>,
+    rule: &ungrammar::Rule,
+    label: Option<&String>,
+) -> Result<(), Error> {
+    if lower_separated_list(fields, grammar, kinds, rule, label)? {
+        return Ok(());
+    }
+
+    match rule {
+        ungrammar::Rule::Labeled { label: l, rule } => {
+            let manually_implemented = matches!(l.as_str(), "lhs" | "rhs" | "op");
+            if manually_implemented {
+                return Ok(());
+            }
+            lower_rule(fields, grammar, kinds, rule, Some(l))
+        }
+        ungrammar::Rule::Node(node) => {
+            let ty = grammar[*node].name.clone();
+            let name = label.cloned().unwrap_or_else(|| ty.to_snake_case());
+            let field = Field {
+                name: format_ident!("{name}"),
+                target: FieldTarget::Node(*node),
+                cardinality: Cardinality::Optional,
+            };
+
+            insert_field(fields, field)
+        }
+        ungrammar::Rule::Token(token) => {
+            let index = kinds.grammar_tokens[token];
+            let name = label
+                .cloned()
+                .unwrap_or_else(|| format!("{}_token", kinds.entries[index].name.to_snake_case()));
+            let field = Field {
+                name: format_ident!("{name}"),
+                target: FieldTarget::Token(index),
+                cardinality: Cardinality::Optional,
+            };
+
+            insert_field(fields, field)
+        }
+        ungrammar::Rule::Seq(rules) | ungrammar::Rule::Alt(rules) => {
+            for rule in rules {
+                lower_rule(fields, grammar, kinds, rule, label)?;
+            }
+
+            Ok(())
+        }
+        ungrammar::Rule::Opt(rule) => lower_rule(fields, grammar, kinds, rule, label),
+        ungrammar::Rule::Rep(inner) => {
+            if let ungrammar::Rule::Node(node) = &**inner {
+                let ty = grammar[*node].name.clone();
+                let name = label
+                    .cloned()
+                    .unwrap_or_else(|| pluralize(&ty.to_snake_case()));
+                let field = Field {
+                    name: format_ident!("{name}"),
+                    target: FieldTarget::Node(*node),
+                    cardinality: Cardinality::Many,
+                };
+
+                return insert_field(fields, field);
+            }
+
+            return Err(Error::InvalidAst(vec![format!("unhandled rule\n{rule:?}")]));
+        }
+    }
+}
+
+/// T (separator T)* separator?
+fn lower_separated_list(
+    fields: &mut IndexMap<proc_macro2::Ident, Field>,
+    grammar: &ungrammar::Grammar,
+    kinds: &Kinds<'_>,
+    rule: &ungrammar::Rule,
+    label: Option<&String>,
+) -> Result<bool, Error> {
+    let rule = match rule {
+        ungrammar::Rule::Seq(it) => it,
+        _ => return Ok(false),
+    };
+
+    let (nt, repeat, trailing_sep) = match rule.as_slice() {
+        [
+            ungrammar::Rule::Node(node),
+            ungrammar::Rule::Rep(repeat),
+            ungrammar::Rule::Opt(trailing_sep),
+        ] => (Either::Left(node), repeat, trailing_sep),
+        [
+            ungrammar::Rule::Token(token),
+            ungrammar::Rule::Rep(repeat),
+            ungrammar::Rule::Opt(trailing_sep),
+        ] => (Either::Right(token), repeat, trailing_sep),
+        _ => return Ok(false),
+    };
+
+    let repeat = match &**repeat {
+        ungrammar::Rule::Seq(it) => it,
+        _ => return Ok(false),
+    };
+
+    if !matches!(
+        repeat.as_slice(),
+        [sep, nt_]
+            if &**trailing_sep == sep && match (nt, nt_) {
+                (Either::Left(node), ungrammar::Rule::Node(node_)) => node == node_,
+                (Either::Right(token), ungrammar::Rule::Token(token_)) => token == token_,
+                _ => false
+            }
+    ) {
+        return Ok(false);
+    }
+
+    match nt {
+        Either::Left(node) => {
+            let ty = grammar[*node].name.clone();
+            let name = label
+                .cloned()
+                .unwrap_or_else(|| pluralize(&ty.to_snake_case()));
+            let field = Field {
+                name: format_ident!("{name}"),
+                target: Node(*node),
+                cardinality: Cardinality::Many,
+            };
+
+            insert_field(fields, field)?;
+        }
+        Either::Right(token) => {
+            let index = kinds.grammar_tokens[token];
+            let name = label
+                .cloned()
+                .unwrap_or_else(|| pluralize(&kinds.entries[index].name.to_snake_case()));
+            let field = Field {
+                name: format_ident!("{name}"),
+                target: FieldTarget::Token(index),
+                cardinality: Cardinality::Many,
+            };
+
+            insert_field(fields, field)?;
+        }
+    }
+
+    Ok(true)
+}
+
+fn insert_field(
+    fields: &mut IndexMap<proc_macro2::Ident, Field>,
+    field: Field,
+) -> Result<(), Error> {
+    match fields.entry(field.name.clone()) {
+        Entry::Vacant(entry) => {
+            entry.insert(field);
+        }
+        Entry::Occupied(entry) => {
+            if entry.get() != &field {
+                return Err(Error::InvalidAst(vec![format!(
+                    "conflicting fields named {}",
+                    entry.key(),
+                )]));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn pluralize(s: &str) -> String {
+    format!("{s}s")
+}
+
+fn resolve_union_kinds(
+    variants: &[ungrammar::Node],
+    grammar: &ungrammar::Grammar,
+    kind_by_name: &HashMap<&str, usize>,
+) -> Result<Vec<usize>, Error> {
+    todo!()
+}
+
+fn generate_ast(
+    ast: &Ast,
+    grammar: &ungrammar::Grammar,
+    kinds: &Kinds<'_>,
+) -> Result<String, Error> {
+    todo!()
+}
 
 #[derive(Debug)]
 struct Ast {
-    nodes: Vec<AstNodeDef>,
-    unions: Vec<AstUnionDef>,
+    nodes: Vec<NodeDef>,
+    unions: Vec<UnionDef>,
 }
 
 #[derive(Debug)]
-struct AstNodeDef {
+struct NodeDef {
     name: proc_macro2::Ident,
     kind_index: usize,
-    // fields: Vec<AstField>,
+    fields: Vec<Field>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct Field {
+    name: proc_macro2::Ident,
+    target: FieldTarget,
+    cardinality: Cardinality,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum FieldTarget {
+    Node(ungrammar::Node),
+    Token(usize),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Cardinality {
+    Optional,
+    Many,
 }
 
 #[derive(Debug)]
-struct AstUnionDef {
+struct UnionDef {
     name: proc_macro2::Ident,
     variants: Vec<ungrammar::Node>,
-    kind_range: (usize, usize),
+    kind_indices: Vec<usize>,
 }
 
 #[cfg(test)]
@@ -454,7 +738,7 @@ mod tests {
         let mut config = empty_config();
         config.punct.push(token("PLUS", Some("+")));
         config.tokens.push(token("INT_LIT", None));
-        let grammar: Grammar = "Expr = 'IntLit' '+' 'IntLit'".parse().unwrap();
+        let grammar: ungrammar::Grammar = "Expr = 'IntLit' '+' 'IntLit'".parse().unwrap();
 
         // act
         let kinds = lower_kinds(&config, &grammar).unwrap();
@@ -477,7 +761,7 @@ mod tests {
         // arrange
         let mut config = empty_config();
         config.tokens = vec![token("FOO", None), token("ALIAS", Some("Foo"))];
-        let grammar: Grammar = "Expr = 'Foo' 'Missing'".parse().unwrap();
+        let grammar: ungrammar::Grammar = "Expr = 'Foo' 'Missing'".parse().unwrap();
 
         // act
         let result = lower_kinds(&config, &grammar);
@@ -553,7 +837,7 @@ mod tests {
     fn computes_empty_token_ranges_and_singleton_node_range() {
         // arrange
         let config = empty_config();
-        let grammar: Grammar = "Expr = Expr?".parse().unwrap();
+        let grammar: ungrammar::Grammar = "Expr = Expr?".parse().unwrap();
 
         // act
         let kinds = lower_kinds(&config, &grammar).unwrap();
@@ -575,7 +859,7 @@ mod tests {
         let config: toml::Value =
             toml::from_str(include_str!("../../../syntax_codegen.toml")).unwrap();
         let config: KindsConfig = config["kinds"].clone().try_into().unwrap();
-        let grammar: Grammar = include_str!("../shakva.ungram").parse().unwrap();
+        let grammar: ungrammar::Grammar = include_str!("../shakva.ungram").parse().unwrap();
         let kinds = lower_kinds(&config, &grammar).unwrap();
         let expected_and_actual = kinds.entries.iter().enumerate().map(|(index, entry)| {
             let kind = crate::syntax::ShakvaKind::from_raw(rowan::SyntaxKind(index as u16));
@@ -635,7 +919,7 @@ mod tests {
                     // arrange
                     let mut config = empty_config();
                     config.tokens.push(token($kind, $text));
-                    let grammar: Grammar = $grammar.parse().unwrap();
+                    let grammar: ungrammar::Grammar = $grammar.parse().unwrap();
                     let grammar_token = grammar.tokens().next().unwrap();
 
                     // act
@@ -721,7 +1005,7 @@ mod tests {
             config.extra_nodes = (0..extra_node_count)
                 .map(|index| token(&format!("EXTRA_NODE_{index}"), None))
                 .collect();
-            let grammar: Grammar = "Expr = Expr?".parse().unwrap();
+            let grammar: ungrammar::Grammar = "Expr = Expr?".parse().unwrap();
 
             // act
             let kinds = lower_kinds(&config, &grammar).unwrap();
@@ -749,11 +1033,11 @@ mod tests {
                         .push(token(&format!("ALIAS{index}"), Some(&format!("T{index}"))));
                 }
             }
-            let grammar: Grammar = "Expr = 'T0' 'T1' 'T2'".parse().unwrap();
-            let mut entries = Vec::new();
+            let grammar: ungrammar::Grammar = "Expr = 'T0' 'T1' 'T2'".parse().unwrap();
+            let mut entries = vec![];
             append_config_kinds(&mut entries, &config.tokens, KindCategory::Token);
             let mut expected_tokens = HashMap::new();
-            let mut expected_problems = Vec::new();
+            let mut expected_problems = vec![];
             // Independent reference: scan all kinds instead of building indexes.
             for token in grammar.tokens() {
                 let name = &grammar[token].name;
