@@ -13,6 +13,7 @@ sdk_dev_tools = ["rust_codegen", "dep:ungrammar"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
+ctrlc = { version = "3" }
 either = { version = "1" }
 heck = { version = "0.5" }
 prettyplease = { version = "0.3", optional = true }

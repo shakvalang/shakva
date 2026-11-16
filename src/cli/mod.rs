@@ -1,3 +1,4 @@
+mod repl;
 #[cfg(feature = "sdk_dev_tools")]
 mod sdk_dev_tools;
 
@@ -11,7 +12,7 @@ pub(super) struct Args {
     cmd: Command,
 }
 
-pub(super) fn dispatch(args: Args) -> Result<(), Error> {
+pub(super) fn dispatch(args: Args) {
     use Command::*;
 
     match args.cmd {
@@ -34,20 +35,4 @@ enum Command {
     /// Generate source files for Shakva development.
     #[cfg(feature = "sdk_dev_tools")]
     Generate(sdk_dev_tools::generate::Args),
-}
-
-#[derive(Debug, thiserror::Error)]
-pub(super) enum Error {
-    #[cfg(feature = "sdk_dev_tools")]
-    #[error(transparent)]
-    GenerateSyntax(#[from] sdk_dev_tools::generate::GenerateSyntaxError),
-}
-
-pub(super) fn report_error(e: &Error) {
-    eprintln!("error: {}", e);
-    let mut source = std::error::Error::source(e);
-    while let Some(cause) = source {
-        eprintln!("  caused by: {cause}");
-        source = cause.source();
-    }
 }

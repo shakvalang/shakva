@@ -19,111 +19,66 @@ pub(super) struct Args {
     check: bool,
 }
 
-pub(super) fn generate(args: Args) -> Result<(), Error> {
+pub(super) fn generate(args: Args) {
     let config_dir = args.config.parent().unwrap_or(Path::new("."));
-    let config_file_text =
-        read_to_string(&args.config).map_err(|source| Error::FileReadFailed {
-            path: args.config.clone(),
-            source,
-        })?;
+    let config_file_text = read_to_string(&args.config)
+        .unwrap_or_else(|_| panic!("failed to read file {}", args.config.display()));
 
-    let config: Config =
-        toml::from_str(&config_file_text).map_err(|source| Error::ConfigParseFailed {
-            path: args.config.clone(),
-            source,
-        })?;
+    let config: Config = toml::from_str(&config_file_text).unwrap_or_else(|_| {
+        panic!(
+            "failed to parse syntax generation config {}",
+            args.config.display()
+        )
+    });
 
     let grammar_path = config_dir.join(&config.grammar);
-    let grammar = read_to_string(&grammar_path).map_err(|source| Error::FileReadFailed {
-        path: grammar_path,
-        source,
-    })?;
+    let grammar = read_to_string(&grammar_path)
+        .unwrap_or_else(|_| panic!("failed to read file {}", grammar_path.display()));
 
-    let gen_sources = shakva::syntax::codegen::generate(&config.kinds, &grammar)?;
+    let gen_sources = shakva::syntax::codegen::generate(&config.kinds, &grammar);
     let output_dir = config_dir.join(&config.output_dir);
 
     update_generated_file(
         &output_dir.join("generated.rs"),
         &gen_sources.kinds_src,
         args.check,
-    )?;
+    );
     update_generated_file(
         &output_dir.join("ast/generated.rs"),
         &gen_sources.ast_src,
         args.check,
-    )
+    );
 }
 
-fn update_generated_file(path: &Path, expected: &str, check: bool) -> Result<(), Error> {
+fn update_generated_file(path: &Path, expected: &str, check: bool) {
     match fs::read(path) {
-        Ok(actual) if actual == expected.as_bytes() => return Ok(()),
+        Ok(actual) if actual == expected.as_bytes() => {
+            return;
+        }
         Ok(_) => {}
         Err(source) if source.kind() == io::ErrorKind::NotFound => {}
-        Err(source) => {
-            return Err(Error::FileReadFailed {
-                path: path.to_path_buf(),
-                source,
-            });
+        Err(_) => {
+            panic!("failed to read file {}", path.display());
         }
     }
 
     if check {
-        return Err(Error::GeneratedFileOutOfDate {
-            path: path.to_path_buf(),
-        });
+        eprintln!(
+            "generated file {} is missing or out of date; run generation without --check",
+            path.display()
+        );
+        return;
     }
 
     if let Some(parent) = path
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
     {
-        fs::create_dir_all(parent).map_err(|source| Error::DirectoryCreateFailed {
-            path: parent.to_path_buf(),
-            source,
-        })?;
+        fs::create_dir_all(parent)
+            .unwrap_or_else(|_| panic!("failed to create directory {}", parent.display()));
     }
 
-    fs::write(path, expected).map_err(|source| Error::FileWriteFailed {
-        path: path.to_path_buf(),
-        source,
-    })
-}
-
-#[derive(Debug, thiserror::Error)]
-pub(crate) enum Error {
-    #[error("failed to read file {}", path.display())]
-    FileReadFailed {
-        path: PathBuf,
-        #[source]
-        source: std::io::Error,
-    },
-
-    #[error("generated file {} is missing or out of date; run generation without --check", path.display())]
-    GeneratedFileOutOfDate { path: PathBuf },
-
-    #[error("failed to create directory {}", path.display())]
-    DirectoryCreateFailed {
-        path: PathBuf,
-        #[source]
-        source: io::Error,
-    },
-
-    #[error("failed to write file {}", path.display())]
-    FileWriteFailed {
-        path: PathBuf,
-        #[source]
-        source: io::Error,
-    },
-
-    #[error("failed to parse syntax generation config {}", path.display())]
-    ConfigParseFailed {
-        path: PathBuf,
-        #[source]
-        source: toml::de::Error,
-    },
-
-    #[error(transparent)]
-    Codegen(#[from] shakva::syntax::codegen::Error),
+    fs::write(path, expected).unwrap_or_else(|_| panic!("failed to write file {}", path.display()));
 }
 
 #[derive(Debug, serde::Deserialize)]

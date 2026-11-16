@@ -3,6 +3,7 @@ pub mod ast;
 pub mod codegen;
 #[rustfmt::skip]
 mod generated;
+mod parse;
 
 pub use generated::*;
 

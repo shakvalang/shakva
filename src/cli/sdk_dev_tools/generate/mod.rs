@@ -1,13 +1,10 @@
-use crate::cli;
-
 mod syntax;
 
-pub(in crate::cli) use syntax::Error as GenerateSyntaxError;
-
-pub(in crate::cli) fn dispatch(args: Args) -> Result<(), cli::Error> {
+pub(in crate::cli) fn dispatch(args: Args) {
     use Command::*;
+
     match args.cmd {
-        Syntax(args) => syntax::generate(args).map_err(cli::Error::from),
+        Syntax(args) => syntax::generate(args),
     }
 }
 
