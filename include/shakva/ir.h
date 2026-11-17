@@ -1,7 +1,5 @@
 #pragma once
 
-#include "shakva/source/pos.h"
-
 typedef enum {
     /* trivia */
 
@@ -126,22 +124,67 @@ typedef enum {
     UNKNOWN,
     // End of input.
     EOI,
-} tok_kind_t;
+} shk_token_kind_t;
 
 typedef enum {
     INT,
     FLOAT,
-} lit_kind_t;
+} shk_literal_kind_t;
+
+typedef enum {
+    BIN = 2,
+    OCT = 8,
+    DEC = 10,
+    HEX = 16,
+} shk_number_system_t;
 
 typedef struct {
-    lit_kind_t kind;
-} lit_data_t;
+    shk_literal_kind_t kind;
+    shk_number_system_t num_system;
+} shk_literal_data_t;
 
 typedef struct {
-    tok_kind_t kind;
-    bpos_t bpos;
+    shk_token_kind_t kind;
+    shk_literal_data_t *lit_data;
+    char *value;
+} shk_token_t;
+
+typedef enum {
+    BINARY_EXPR,
+    PAREN_EXPR,
+    LIT_EXPR,
+} expr_kind_t;
+
+struct expr_t;
+
+typedef struct {
+    struct expr_t *lhs;
+    shk_token_t op;
+    struct expr_t *rhs;
+} binary_expr_t;
+
+typedef struct {
+    shk_token_t lparen;
+    struct expr_t *inner;
+    shk_token_t rparen;
+} paren_expr_t;
+
+typedef struct {
+    expr_kind_t kind;
     union {
-        char *value;
-        lit_data_t lit_data;
+        binary_expr_t binary;
+        paren_expr_t paren;
     };
-} tok_t;
+} expr_t;
+
+typedef enum { EXPR } shk_statement_kind_t;
+
+typedef struct {
+    shk_statement_kind_t kind;
+    struct expr_t *expr;
+} shk_statement_t;
+
+typedef struct {
+    int stmt_cnt;
+    shk_statement_t *stmts;
+} shk_line_t;

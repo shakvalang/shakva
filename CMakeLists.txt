@@ -8,4 +8,6 @@ endif()
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+add_subdirectory(third_party)
+# depends on [third_party]
 add_subdirectory(src)
