@@ -1,5 +1,9 @@
 #pragma once
 
+typedef struct {
+    char *start, end;
+} shk_pos_t;
+
 typedef enum {
     /* trivia */
 
@@ -119,72 +123,73 @@ typedef enum {
     WHILE_KW,
     // `do`.
     DO_KW,
+    // `not`.
+    NOT_KW,
 
     // A character the lexer does not know.
     UNKNOWN,
     // End of input.
     EOI,
-} shk_token_kind_t;
+} shk_tok_kind_t;
 
 typedef enum {
     INT,
     FLOAT,
-} shk_literal_kind_t;
+} shk_lit_kind_t;
 
 typedef enum {
     BIN = 2,
     OCT = 8,
     DEC = 10,
     HEX = 16,
-} shk_number_system_t;
+} shk_num_sys_t;
 
 typedef struct {
-    shk_literal_kind_t kind;
-    shk_number_system_t num_system;
-} shk_literal_data_t;
+    shk_lit_kind_t kind;
+    shk_num_sys_t num_sys;
+} shk_lit_data_t;
 
 typedef struct {
-    shk_token_kind_t kind;
-    shk_literal_data_t *lit_data;
-    char *value;
-} shk_token_t;
+    shk_tok_kind_t kind;
+    shk_lit_data_t *lit_data;
+    char *v;
+} shk_tok_t;
 
 typedef enum {
     BINARY_EXPR,
     PAREN_EXPR,
     LIT_EXPR,
-} expr_kind_t;
+} shk_expr_kind_t;
 
-struct expr_t;
-
-typedef struct {
-    struct expr_t *lhs;
-    shk_token_t op;
-    struct expr_t *rhs;
-} binary_expr_t;
+struct shk_expr_t;
 
 typedef struct {
-    shk_token_t lparen;
-    struct expr_t *inner;
-    shk_token_t rparen;
-} paren_expr_t;
+    struct shk_expr_t *lhs;
+    shk_tok_t op;
+    struct shk_expr_t *rhs;
+} shk_bin_expr_t;
 
 typedef struct {
-    expr_kind_t kind;
+    shk_tok_t lparen;
+    struct shk_expr_t *inner;
+    shk_tok_t rparen;
+} shk_paren_expr_t;
+
+typedef struct {
+    shk_expr_kind_t kind;
     union {
-        binary_expr_t binary;
-        paren_expr_t paren;
+        shk_bin_expr_t *binary;
+        shk_paren_expr_t *paren;
     };
-} expr_t;
+} shk_expr_t;
 
-typedef enum { EXPR } shk_statement_kind_t;
-
-typedef struct {
-    shk_statement_kind_t kind;
-    struct expr_t *expr;
-} shk_statement_t;
+typedef enum { EXPR } shk_stmt_kind_t;
 
 typedef struct {
-    int stmt_cnt;
-    shk_statement_t *stmts;
-} shk_line_t;
+    shk_stmt_kind_t kind;
+    shk_expr_t *expr;
+} shk_stmt_t;
+
+typedef struct {
+    shk_stmt_t *stmts;
+} shk_file_t;

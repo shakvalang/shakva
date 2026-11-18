@@ -1,0 +1,151 @@
+(*
+ * The syntax is specified using a [variant](https://en.wikipedia.org/wiki/Wirth_syntax_notation) of Extended Backus-Naur Form (EBNF):
+ *
+ * ```ebnf
+ *  syntax      = { production } .
+ *  production  = ProductionName "=" [ expression ] "." .
+ *  expression  = term { "|" term } .
+ *  term        = factor { factor } .
+ *  factor      = ProductionName 
+ *              | Token 
+ *              | group 
+ *              | option 
+ *              | repetition .
+ *
+ *  group       = "(" expression ")" .
+ *  option      = "[" expression "]" .
+ *  repetition  = "{" expression "}" .
+ * ```
+ *
+ * Productions are expressions constructed from terms and the following operators, in increasing precedence:
+ *
+ * ```text
+ * |   alternation
+ * ()  grouping
+ * []  option (0 or 1 times)
+ * {}  repetition (0 to n times)
+ * ```
+ *
+ * SNAKE_UPPER_CASE production names are used to identify lexical (terminal) tokens. Non-terminals are in snake_case. Lexical tokens are enclosed in double quotes "" or back quotes ``.
+ *)
+
+shakva_file = [ stmts ] .
+
+stmts = stmt { ';' stmt } [ ';' ] . 
+
+stmt = assign
+     | bind
+     | expr .
+
+assign      = ident_or_wc assign_op expr .
+ident_or_wc = IDENT 
+            | "_" . 
+
+assign_op = "="
+          | "+="
+          | "-="
+          | "*="
+          | "/="
+          | "%="
+          | "**="
+          | "//=" .
+
+bind  = [ "mut" ] ident_or_wc ":=" expr .
+
+expr = bin_expr
+     | paren_expr
+     | lit_expr
+     | ref_expr
+     | call_expr
+     | block_expr
+     | if_expr
+     | lambda_expr
+     | prefix_expr
+     | match_expr
+     | for_expr
+     | while_expr
+     | do_while_expr
+     | loop_expr
+     | break_expr
+     | continue_expr 
+     | compare_expr .
+
+bin_expr = expr bin_op expr .
+bin_op   = "+"
+         | "-"
+         | "*"
+         | "/"
+         | "%"
+         | "**"
+         | "//"
+         | "and"
+         | "or" .
+
+paren_expr = "(" expr ")" .
+lit_expr   = INT_LIT
+           | FLOAT_LIT
+           | STR_LIT .
+
+ref_expr   = IDENT .
+
+call_expr   = expr call_suffix .
+(* A lambda immediately following paren_args belongs to the same call. *)
+call_suffix = paren_args [ lambda_expr ] 
+            | lambda_expr .
+
+paren_args = "(" [ expr { "," expr } [ "," ]] ")" .
+
+block_expr = "{" [ stmts ] "}" .
+
+if_expr     = if_branch { elif_branch } [ else_branch ] .
+if_branch   = "if" expr block_expr .
+elif_branch = "elif" expr block_expr .
+else_branch = "else" block_expr .
+
+lambda_expr   = "{" [ lambda_params ] "=>" [ stmts ] "}" .
+lambda_params = ident_or_wc { "," ident_or_wc } [ "," ] .
+
+prefix_expr = prefix_op expr .
+prefix_op   = "-"
+            | "not" .
+
+match_expr = "match" scrutinee "{" match_arms "}" .
+(* 
+ * Same as expr with exception of trailing lambda, e.g.
+ * ```shakva
+ *  match f(x) { y => y } { z => z }
+ * ```
+ * needs to be written as
+ * ```shakva
+ *  match (f(x) { y => y }) { z => z }
+ * ```
+ * to resolve ambiguity.
+ *)
+scrutinee  = expr .
+match_arms = match_arm { ";" match_arm } [ ";" ] .
+match_arm  = pat [ guard ] "=>" expr .
+
+pat   = ident_or_wc | [ "-" ] INT_LIT .
+guard = "if" expr .
+
+for_expr      = "for" pat "in" expr [ guard ] block_expr .
+while_expr    = "while" expr block_expr .
+do_while_expr = "do" block_expr "while" expr .
+loop_expr     = "loop" block_expr .
+
+break_expr    = "break" [ expr ] .
+continue_expr = "continue" [ expr ] .
+
+(*
+ * All comparison operators have the same precedence.
+ * At the same nesting level, tighter-binding infix operators are part of an operand. 
+ * Another comparison operator extends the chain.
+ * A lower-precedence infix operator ends the chain.
+ *)
+compare_expr  = expr compare_op expr { compare_op expr } .
+compare_op    = ">"
+              | "<"
+              | "=="
+              | ">="
+              | "<=" .
+

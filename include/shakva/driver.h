@@ -1,14 +1,7 @@
 #pragma once
 
-#include "sds.h"
-typedef enum { REPL } shk_driver_cmd_kind_t;
+typedef struct shk_driver_impl_t *shk_driver_t;
 
-typedef struct {
-    shk_driver_cmd_kind_t cmd;
-    sds input;
-    sds output;
-} shk_driver_parsed_args_t;
-
-int shk_driver_parse_args(shk_driver_parsed_args_t *, int argc, char **argv);
-
-int shk_driver_run(const shk_driver_parsed_args_t *);
+shk_driver_t shk_driver_new(void);
+void shk_driver_free(shk_driver_t);
+int shk_driver_run(shk_driver_t, int, char **);
