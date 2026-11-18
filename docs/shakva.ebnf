@@ -29,8 +29,7 @@ stmt = assign
      | bind
      | expr .
 
-assign      = IDENT assign_op expr .
-
+assign    = IDENT assign_op expr .
 assign_op = "="
           | "+="
           | "-="
@@ -59,7 +58,9 @@ power_expr   = call_expr [ "**" neg_expr ] .
 paren_expr = "(" expr ")" .
 lit_expr   = INT_LIT
            | FLOAT_LIT
-           | STR_LIT .
+           | STR_LIT 
+           | "true" 
+           | "false" .
 
 ref_expr   = IDENT .
 
