@@ -6,10 +6,10 @@
  *  production  = ProductionName "=" [ expression ] "." .
  *  expression  = term { "|" term } .
  *  term        = factor { factor } .
- *  factor      = ProductionName 
- *              | Token 
- *              | group 
- *              | option 
+ *  factor      = ProductionName
+ *              | Token
+ *              | group
+ *              | option
  *              | repetition .
  *
  *  group       = "(" expression ")" .
@@ -17,29 +17,19 @@
  *  repetition  = "{" expression "}" .
  * ```
  *
- * Productions are expressions constructed from terms and the following operators, in increasing precedence:
- *
- * ```text
- * |   alternation
- * ()  grouping
- * []  option (0 or 1 times)
- * {}  repetition (0 to n times)
- * ```
- *
- * SNAKE_UPPER_CASE production names are used to identify lexical (terminal) tokens. Non-terminals are in snake_case. Lexical tokens are enclosed in double quotes "" or back quotes ``.
+ * SNAKE_UPPER_CASE production names are used to identify lexical (terminal) tokens. 
+ * Non-terminals are in snake_case. Lexical tokens are enclosed in double quotes "".
  *)
 
 shakva_file = [ stmts ] .
 
-stmts = stmt { ';' stmt } [ ';' ] . 
+stmts = stmt { ";" stmt } [ ";" ] .
 
 stmt = assign
      | bind
      | expr .
 
-assign      = ident_or_wc assign_op expr .
-ident_or_wc = IDENT 
-            | "_" . 
+assign      = IDENT assign_op expr .
 
 assign_op = "="
           | "+="
@@ -50,36 +40,21 @@ assign_op = "="
           | "**="
           | "//=" .
 
-bind  = [ "mut" ] ident_or_wc ":=" expr .
+bind  = [ "mut" ] IDENT ":=" expr .
 
-expr = bin_expr
-     | paren_expr
-     | lit_expr
-     | ref_expr
-     | call_expr
-     | block_expr
-     | if_expr
-     | lambda_expr
-     | prefix_expr
-     | match_expr
-     | for_expr
-     | while_expr
-     | do_while_expr
-     | loop_expr
-     | break_expr
-     | continue_expr 
-     | compare_expr .
-
-bin_expr = expr bin_op expr .
-bin_op   = "+"
-         | "-"
-         | "*"
-         | "/"
-         | "%"
-         | "**"
-         | "//"
-         | "and"
-         | "or" .
+expr         = or_expr .
+(* 
+ * `or`, `and` and arithmetic repetitions are left associative. 
+ * Comparisons form one chain. 
+ *)
+or_expr      = and_expr { "or" and_expr } .
+and_expr     = compare_expr { "and" compare_expr } .
+compare_expr = add_expr { ( ">" | "<" | "==" | ">=" | "<=" ) add_expr } .
+add_expr     = mul_expr { ( "+" | "-" ) mul_expr } .
+mul_expr     = neg_expr { ( "*" | "/" | "//" | "%" ) neg_expr } .
+neg_expr     = "-" neg_expr | not_expr | power_expr .
+not_expr     = "not" compare_expr .
+power_expr   = call_expr [ "**" neg_expr ] .
 
 paren_expr = "(" expr ")" .
 lit_expr   = INT_LIT
@@ -88,10 +63,24 @@ lit_expr   = INT_LIT
 
 ref_expr   = IDENT .
 
-call_expr   = expr call_suffix .
-(* A lambda immediately following paren_args belongs to the same call. *)
-call_suffix = paren_args [ lambda_expr ] 
-            | lambda_expr .
+call_expr = callee call_suffix .
+callee    = paren_expr
+          | lit_expr
+          | ref_expr
+          | block_expr
+          | lambda_expr
+          | if_expr
+          | match_expr
+          | for_expr
+          | while_expr
+          | do_while_expr
+          | loop_expr
+          | break_expr
+          | continue_expr .
+
+(* The first lambda after a parenthesized argument list belongs to that call.
+ * Each other lambda is a separate call. *)
+call_suffix = { lambda_expr } { paren_args { lambda_expr } } .
 
 paren_args = "(" [ expr { "," expr } [ "," ]] ")" .
 
@@ -103,49 +92,25 @@ elif_branch = "elif" expr block_expr .
 else_branch = "else" block_expr .
 
 lambda_expr   = "{" [ lambda_params ] "=>" [ stmts ] "}" .
-lambda_params = ident_or_wc { "," ident_or_wc } [ "," ] .
+lambda_params = IDENT { "," IDENT } [ "," ] .
 
-prefix_expr = prefix_op expr .
-prefix_op   = "-"
-            | "not" .
-
+(* For each `match` in source order, use the first `{` that can start its arms
+ * and still let the whole file parse. *)
 match_expr = "match" scrutinee "{" match_arms "}" .
-(* 
- * Same as expr with exception of trailing lambda, e.g.
- * ```shakva
- *  match f(x) { y => y } { z => z }
- * ```
- * needs to be written as
- * ```shakva
- *  match (f(x) { y => y }) { z => z }
- * ```
- * to resolve ambiguity.
- *)
 scrutinee  = expr .
 match_arms = match_arm { ";" match_arm } [ ";" ] .
 match_arm  = pat [ guard ] "=>" expr .
 
-pat   = ident_or_wc | [ "-" ] INT_LIT .
+pat   = IDENT | [ "-" ] INT_LIT .
 guard = "if" expr .
 
 for_expr      = "for" pat "in" expr [ guard ] block_expr .
 while_expr    = "while" expr block_expr .
+(* Resolve `match` arms first. Then read `not` and `break` operands and
+ * `do ... while` conditions from left to right. For each, take the longest
+ * expression that still lets the whole file parse. *)
 do_while_expr = "do" block_expr "while" expr .
 loop_expr     = "loop" block_expr .
 
 break_expr    = "break" [ expr ] .
-continue_expr = "continue" [ expr ] .
-
-(*
- * All comparison operators have the same precedence.
- * At the same nesting level, tighter-binding infix operators are part of an operand. 
- * Another comparison operator extends the chain.
- * A lower-precedence infix operator ends the chain.
- *)
-compare_expr  = expr compare_op expr { compare_op expr } .
-compare_op    = ">"
-              | "<"
-              | "=="
-              | ">="
-              | "<=" .
-
+continue_expr = "continue" .
