@@ -39,7 +39,7 @@ assign_op = "="
           | "**="
           | "//=" .
 
-bind  = [ "mut" ] IDENT ":=" expr .
+bind = IDENT ":=" expr .
 
 expr         = or_expr .
 (* Repeated `or`, `and`, additive and multiplicative operators associate left. Comparisons form a single chain. *)

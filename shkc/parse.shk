@@ -1,0 +1,144 @@
+pub parseFile := { input =>
+    parseCtx := {
+        lexer: { input, pos: 0 }
+        errors: []
+    }
+    stmts := parseFileImpl(ref parseCtx)
+    { stmts, errors: parseCtx.errors }
+}
+
+parseFileImpl := { ctx => 
+    stmts := []
+
+    while not atEof(ctx) {
+        stmt := try {
+            parseStmt(ref ctx)
+        } catch e {
+            ctx.errors.push(e.parseError)
+            recover(ref ctx)
+            continue
+        }
+        stmts.push(stmt)
+    }
+
+    stmts
+}
+
+recover := { ctx => 
+    while not seeingSemi(ctx) {
+        eat(ref ctx)
+    }
+}
+
+parseStmt := { ctx => 
+    if seeingAssign(ctx) {
+        parseAssign(ctx)
+    } elif seeingBind(ctx) {
+        parseBind(ctx)
+    } elif seeingExpr(ctx) {
+        parseExpr(ctx)
+    } 
+}
+
+parseAssign := { ctx =>
+    { lhs: parseIdent(ref ctx), op: parseAssignOp(ref ctx), rhs: parseExpr(ref ctx) }
+}
+
+parseBind := { ctx =>
+    { mod: parseModifier(ref ctx), lhs: parseIdent(ref ctx), rhs: parseExpr(ref ctx) }
+}
+
+parseExpr := { ctx => parseExprMinBp(ctx, 0) }
+
+parseExprMinBp := { ctx, minBp =>
+    lhs := parseExprStart()
+}
+
+firstToken := { lexer => }
+
+secondToken := { lexer => }
+
+nextToken := { =>
+    
+}
+
+type Token = 
+           # trivia
+
+           # A sequence of whitespace characters excluding CR (`\r`) and LF (`\n`).
+           | WS 
+           # A comment starting with `#`, excluding the terminating line ending.
+           | Comment
+           
+           # punct
+           
+           | ","
+           | ":"
+           | "."
+           | ";"
+           | "{"
+           | "}"
+           | "["
+           | "]"
+           | "("
+           | ")"
+           | "?"
+           | "!"
+           | "_"
+           | "->"
+           | "=>"
+
+           # operators
+
+           | "+"
+           | "-"
+           | "*"
+           | "/"
+           | "%"
+           | "**"
+           | "//"
+           | ">"
+           | "<"
+           | "=="
+           | ">="
+           | "<="
+           
+           # bind operators
+
+           | ":="
+
+           # assign operators
+
+           | "="
+           | "+="
+           | "-="
+           | "*="
+           | "/="
+           | "%="
+           | "*="
+           | "//="
+
+           | Lit(LitData)
+           | Ident(str)
+
+           # keywords
+
+           | "match"
+           | "if"
+           | "elif"
+           | "else"
+           | "mut"
+           | "and"
+           | "or"
+           | "for"
+           | "in"
+           | "while"
+           | "do"
+           | "not"
+
+           # special
+
+           # A character the lexer does not know.
+           | Unknown
+           # End of input.
+           | Eof
