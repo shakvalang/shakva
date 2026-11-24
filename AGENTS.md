@@ -10,6 +10,8 @@ Shakva's primary goal is to be the perfect language for its creator. The creator
 
 The long-term goal is self-hosting. The planned compiler target is bytecode for Sylva, a virtual machine to be developed as part of this project.
 
+See the [bootstrap plan](docs/bootstrap.md) for the path to a self-hosted compiler and the checks for each milestone.
+
 ## Language design
 
 Read [The Zen of Shakva](docs/zen.md) before proposing a language change. It records the project's design principles.

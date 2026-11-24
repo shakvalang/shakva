@@ -1,0 +1,7 @@
+[workspace]
+resolver = "3"
+members = ["bootstrap"]
+
+[workspace.dependencies]
+clap = { version = "4" }
+thiserror = { version = "2" }
