@@ -7,8 +7,11 @@ pub fn parse_file(input: &str) -> ParseFileResult<'_> {
             len_remaining: input.len(),
         },
         errors: vec![],
-        line_break_before: false,
-        cur: (Token::Dummy, Span::default()),
+        cur: Token {
+            kind: TokenKind::Dummy,
+            span: Span::default(),
+            line_break_before: false,
+        },
     };
 
     let file = parser.parse_file();
@@ -25,12 +28,13 @@ struct Lexer<'src> {
     len_remaining: usize,
 }
 
+impl<'src> Lexer<'src> {}
+
 #[derive(Debug)]
 struct Parser<'src> {
     lexer: Lexer<'src>,
-    errors: Vec<ParseError<'src>>,
-    line_break_before: bool,
-    cur: Spanned<Token<'src>>,
+    errors: Vec<ParseError>,
+    cur: Token,
 }
 
 impl<'src> Parser<'src> {
@@ -39,10 +43,10 @@ impl<'src> Parser<'src> {
         while !self.is_at_eof() {
             exprs.push(self.parse_expr(0));
 
-            if self.eat(Token::Semi) {
+            if self.eat(TokenKind::Semi) {
                 continue;
             }
-            if self.is_at_eof() || self.line_break_before {
+            if self.is_at_eof() || self.cur.line_break_before {
                 continue;
             }
 
@@ -53,7 +57,7 @@ impl<'src> Parser<'src> {
         ShakvaFile { exprs }
     }
 
-    fn parse_expr(&mut self, min_bp: u8) -> Spanned<Expr<'src>> {
+    fn parse_expr(&mut self, min_bp: u8) -> Expr<'src> {
         let mut lhs = self.parse_expr_start(min_bp);
 
         loop {
@@ -61,29 +65,29 @@ impl<'src> Parser<'src> {
                 break;
             }
             let op = self.parse_infix_op();
-            let (lbp, rbp) = op.0.bp();
+            let (lbp, rbp) = op.value.bp();
             if lbp < min_bp {
                 break;
             }
             self.bump();
 
             let rhs = self.parse_expr(rbp);
-            let span = lhs.1.start..rhs.1.end;
-            lhs = (
-                Expr::Infix {
+            let span = lhs.span.start..rhs.span.end;
+            lhs = Expr {
+                kind: ExprKind::Infix {
                     lhs: Box::new(lhs),
                     op,
                     rhs: Box::new(rhs),
                 },
-                span.into(),
-            );
+                span: span.into(),
+            };
         }
 
         lhs
     }
 
-    fn parse_expr_start(&mut self, min_bp: u8) -> Spanned<Expr<'src>> {
-        let (tok, sp) = self.peek();
+    fn parse_expr_start(&mut self, min_bp: u8) -> Expr<'src> {
+        let tok = self.peek();
 
         todo!()
     }
@@ -92,7 +96,7 @@ impl<'src> Parser<'src> {
         todo!()
     }
 
-    fn eat(&mut self, tok: Token) -> bool {
+    fn eat(&mut self, tok: TokenKind) -> bool {
         todo!()
     }
 
@@ -104,7 +108,7 @@ impl<'src> Parser<'src> {
         todo!()
     }
 
-    fn peek(&self) -> &Spanned<Token<'src>> {
+    fn peek(&self) -> &Token {
         &self.cur
     }
 
@@ -117,117 +121,43 @@ impl<'src> Parser<'src> {
 #[derive(Debug)]
 pub struct ParseFileResult<'src> {
     file: ShakvaFile<'src>,
-    errors: Vec<ParseError<'src>>,
+    errors: Vec<ParseError>,
 }
 
 #[derive(Debug)]
-pub enum ParseError<'src> {
+pub enum ParseError {
     ExpectedExprSep {
-        actual: Spanned<Token<'src>>,
+        actual: Token,
     },
     UnexpectedToken {
-        expected: Vec<TokenType>,
-        actual: Spanned<Token<'src>>,
+        expected: Vec<TokenKind>,
+        actual: Token,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TokenType {
-    /* identifiers and literals */
+pub struct Token {
+    pub kind: TokenKind,
+    pub span: Span,
+    pub line_break_before: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenKind {
     Ident,
-    LitConst,
-
-    /* keywords */
-    AndKw,
-    CatchKw,
-    DoKw,
-    ElifKw,
-    ElseKw,
-    FalseKw,
-    FinallyKw,
-    ForKw,
-    IfKw,
-    InKw,
-    MatchKw,
-    NotKw,
-    OrKw,
-    ReturnKw,
-    RefKw,
-    ThrowKw,
-    TrueKw,
-    TryKw,
-    WhileKw,
-
-    /* delimiters */
-    LParen,
-    RParen,
-    LBracket,
-    RBracket,
-    LBrace,
-    RBrace,
-
-    /* punctuation */
-    Comma,
-    Semi,
-    Colon,
-    Dot,
-    Quest,
-    Excl,
-    Wildcard,
-    Arrow,
-    FArrow,
-
-    /* arithmetic operators */
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Percent,
-    DStar,
-    DSlash,
-
-    /* comparison operators */
-    Eq,
-    Lt,
-    Le,
-    Gt,
-    Ge,
-
-    /* binding and assignment */
-    Bind,
-    Rebind,
-    PlusEq,
-    MinusEq,
-    StarEq,
-    SlashEq,
-    PercentEq,
-    DStarEq,
-    DSlashEq,
-
-    /* special */
-    Eof,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Token<'src> {
-    /* trivia */
-    /// A sequence of whitespace characters excluding CR (`\r`) and LF (`\n`).
-    Ws,
-    /// A comment starting with `#`, excluding the terminating line ending.
-    Comment,
-
-    /* identifiers and literals */
-    Ident(&'src str),
-    LitConst {
-        kind: LitConstKind,
-        value: &'src str,
-    },
+    Literal(LitConstKind),
 
     /* keywords */
     /// `and`.
     AndKw,
     /// `catch`.
     CatchKw,
+    /// `break`.
+    BreakKw,
+    /// `continue`.
+    ContinueKw,
+    /// `loop`.
+    LoopKw,
     /// `do`.
     DoKw,
     /// `elif`.
@@ -384,6 +314,10 @@ pub struct Span {
 }
 
 impl Span {
+    pub fn text(self, source: &str) -> &str {
+        &source[self.start.0 as usize..self.end.0 as usize]
+    }
+
     pub fn new(start: BytePos, end: BytePos) -> Self {
         Self { start, end }
     }
@@ -395,96 +329,104 @@ impl From<Range<BytePos>> for Span {
     }
 }
 
-pub type Spanned<T> = (T, Span);
-
 #[derive(Debug)]
-pub struct ShakvaFile<'src> {
-    pub exprs: Vec<Spanned<Expr<'src>>>,
+pub struct Spanned<T> {
+    pub value: T,
+    pub span: Span,
 }
 
 #[derive(Debug)]
-pub enum Expr<'src> {
+pub struct ShakvaFile<'src> {
+    pub exprs: Vec<Expr<'src>>,
+}
+
+#[derive(Debug)]
+pub struct Expr<'src> {
+    pub kind: ExprKind<'src>,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum ExprKind<'src> {
     Infix {
-        lhs: Box<Spanned<Expr<'src>>>,
+        lhs: Box<Expr<'src>>,
         op: Spanned<InfixOp>,
-        rhs: Box<Spanned<Expr<'src>>>,
+        rhs: Box<Expr<'src>>,
     },
     Prefix {
         op: Spanned<PrefixOp>,
-        rhs: Box<Spanned<Expr<'src>>>,
+        rhs: Box<Expr<'src>>,
     },
-    ParenExpr {
-        inner: Box<Spanned<Expr<'src>>>,
+    Paren {
+        inner: Box<Expr<'src>>,
     },
-    LitConstExpr(LitConstData),
-    RefExpr {
-        name: Spanned<&'src str>,
+    LitConst(LitConstData<'src>),
+    Ref(&'src str),
+    Call {
+        callee: Box<Expr<'src>>,
+        args: Vec<Expr<'src>>,
     },
-    CallExpr {
-        callee: Box<Spanned<Expr<'src>>>,
-        args: Vec<Spanned<Expr<'src>>>,
-    },
-    IfExpr {
+    If {
         if_branch: Spanned<IfBranch<'src>>,
         elif_branches: Vec<Spanned<ElifBranch<'src>>>,
         else_branch: Option<Spanned<ElseBranch<'src>>>,
     },
-    LambdaExpr {
+    Lambda {
         params: Vec<Spanned<&'src str>>,
         body: Spanned<Body<'src>>,
     },
-    MatchExpr {
-        scrutinee: Box<Spanned<Expr<'src>>>,
+    Match {
+        scrutinee: Box<Expr<'src>>,
         arms: Vec<Spanned<MatchArm<'src>>>,
     },
-    ForExpr {
+    For {
         pat: Spanned<Pattern<'src>>,
-        iterable: Box<Spanned<Expr<'src>>>,
-        guard: Option<Box<Spanned<Expr<'src>>>>,
+        iterable: Box<Expr<'src>>,
+        guard: Option<Box<Expr<'src>>>,
         body: Spanned<Body<'src>>,
     },
-    WhileExpr {
-        cond: Box<Spanned<Expr<'src>>>,
+    While {
+        cond: Box<Expr<'src>>,
         body: Spanned<Body<'src>>,
     },
-    DoWhileExpr {
+    DoWhile {
         body: Spanned<Body<'src>>,
-        cond: Box<Spanned<Expr<'src>>>,
+        cond: Box<Expr<'src>>,
     },
-    LoopExpr {
+    Loop {
         body: Spanned<Body<'src>>,
     },
-    BreakExpr {
-        expr: Option<Box<Spanned<Expr<'src>>>>,
+    Break {
+        expr: Option<Box<Expr<'src>>>,
     },
-    ContinueExpr,
-    TryExpr {
+    Continue,
+    Try {
         try_block: Spanned<Body<'src>>,
         catch_blocks: Vec<Spanned<CatchBlock<'src>>>,
         finally_block: Option<Spanned<Body<'src>>>,
     },
-    ThrowExpr {
-        expr: Box<Spanned<Expr<'src>>>,
+    Throw {
+        expr: Box<Expr<'src>>,
     },
-    CompareExpr {
-        first: Box<Spanned<Expr<'src>>>,
-        rest: Vec<(Spanned<CompareOp>, Spanned<Expr<'src>>)>,
+    Compare {
+        first: Box<Expr<'src>>,
+        rest: Vec<(Spanned<CompareOp>, Expr<'src>)>,
     },
-    ReturnExpr {
-        expr: Option<Box<Spanned<Expr<'src>>>>,
+    Return {
+        expr: Option<Box<Expr<'src>>>,
     },
     Error,
 }
 
 #[derive(Debug)]
 pub struct IfBranch<'src> {
-    pub cond: Box<Spanned<Expr<'src>>>,
+    pub cond: Box<Expr<'src>>,
     pub body: Spanned<Body<'src>>,
 }
 
 #[derive(Debug)]
 pub struct ElifBranch<'src> {
-    pub cond: Spanned<Expr<'src>>,
+    pub cond: Expr<'src>,
     pub body: Spanned<Body<'src>>,
 }
 
@@ -495,13 +437,13 @@ pub struct ElseBranch<'src> {
 
 #[derive(Debug)]
 pub struct Body<'src> {
-    pub exprs: Vec<Spanned<Expr<'src>>>,
+    pub exprs: Vec<Expr<'src>>,
 }
 
 #[derive(Debug)]
 pub struct MatchArm<'src> {
     pub pat: Spanned<Pattern<'src>>,
-    pub guard: Option<Spanned<Expr<'src>>>,
+    pub guard: Option<Expr<'src>>,
     pub body: Spanned<Body<'src>>,
 }
 
@@ -510,7 +452,7 @@ pub enum Pattern<'src> {
     Ident(Spanned<&'src str>),
     LitConst {
         op: Option<Spanned<PrefixOp>>,
-        data: Spanned<LitConstData>,
+        data: Spanned<LitConstData<'src>>,
     },
 }
 
@@ -521,7 +463,10 @@ pub struct CatchBlock<'src> {
 }
 
 #[derive(Debug)]
-pub struct LitConstData {}
+pub struct LitConstData<'src> {
+    pub kind: LitConstKind,
+    pub text: &'src str,
+}
 
 #[derive(Debug)]
 pub enum InfixOp {
