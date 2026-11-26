@@ -1,9 +1,6 @@
 use clap::Parser;
 
-use crate::driver::{Args, run};
-
-mod driver;
-mod parse;
+use shkc::driver::{Args, run};
 
 fn main() {
     run(Args::parse());
